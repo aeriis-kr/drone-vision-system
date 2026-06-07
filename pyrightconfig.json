@@ -1,0 +1,19 @@
+{
+  "include": ["pi5_tx/src", "vision_rx/src", "pi5_tx/main.py", "vision_rx/main.py"],
+  "executionEnvironments": [
+    {
+      "root": "pi5_tx/src",
+      "extraPaths": ["pi5_tx/src"]
+    },
+    {
+      "root": "vision_rx/src",
+      "extraPaths": ["vision_rx/src"]
+    },
+    {
+      "root": ".",
+      "extraPaths": ["pi5_tx/src", "vision_rx/src"]
+    }
+  ],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic"
+}

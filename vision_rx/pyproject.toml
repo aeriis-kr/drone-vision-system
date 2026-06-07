@@ -1,0 +1,17 @@
+[project]
+name = "vision-rx"
+version = "0.1.0"
+description = "Cross-platform UDP/RTP H264 receiver with YOLO inference for Drone Vision System"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26", "opencv-python>=4.9", "ultralytics>=8.3"]
+
+[project.scripts]
+vision-rx = "vision_rx.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vision_rx"]
