@@ -182,7 +182,7 @@ Pending AP settings:
   SSID:  $ssid
   Pi IP: $ap_ip
 
-Type ENABLE_AP to continue, or press Enter to skip AP setup safely.
+Enter y to continue, or press Enter/N to skip AP setup safely.
 For unattended installs, rerun with AP_CONFIRM=1 only when the disconnect is expected.
 EOF
 
@@ -192,11 +192,11 @@ EOF
 	fi
 
 	local answer
-	if ! read -r -p "[setup-pi] Switch Wi-Fi into AP mode now? " answer; then
+	if ! read -r -p "[setup-pi] Switch Wi-Fi into AP mode now? [y/N] " answer; then
 		echo "[setup-pi] AP setup skipped before changing Wi-Fi mode"
 		return 1
 	fi
-	if [[ "$answer" == "ENABLE_AP" ]]; then
+	if [[ "${answer,,}" == "y" ]]; then
 		return 0
 	fi
 

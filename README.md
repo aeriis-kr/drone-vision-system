@@ -18,8 +18,8 @@ make setup-pi
 ```
 
 This performs apt update/upgrade, installs camera/FFmpeg/Python/uv dependencies,
-creates the uv environment, then asks for explicit confirmation before switching
-Wi-Fi into AP mode. If confirmed, it creates a Raspberry Pi Wi-Fi AP with a
+creates the uv environment, then asks `Switch Wi-Fi into AP mode now? [y/N]`
+before switching Wi-Fi into AP mode. If confirmed with `y`, it creates a
 randomized SSID such as `DVS-8K2Q7A` and prints the AP connection information.
 
 Useful Pi setup overrides:
