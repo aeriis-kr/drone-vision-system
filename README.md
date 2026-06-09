@@ -20,7 +20,8 @@ make setup-pi
 This performs apt update/upgrade, installs camera/FFmpeg/Python/uv dependencies,
 creates the uv environment, then asks `Switch Wi-Fi into AP mode now? [y/N]`
 before switching Wi-Fi into AP mode. If confirmed with `y`, it creates a
-randomized SSID such as `DVS-8K2Q7A` and prints the AP connection information.
+randomized SSID such as `DVS-8K2Q7A`, sets the default WPA key to the SSID
+suffix repeated twice (`8K2Q7A8K2Q7A`), and prints the AP connection information.
 
 Useful Pi setup overrides:
 
@@ -28,7 +29,7 @@ Useful Pi setup overrides:
 APT_UPGRADE=0 make setup-pi          # skip full-upgrade
 WIFI_COUNTRY=KR make setup-pi        # default regulatory country
 AP_SSID=DVS-CLASS01 make setup-pi    # optional fixed SSID
-AP_PSK=<wpa-key> make setup-pi       # optional fixed WPA key
+AP_PSK=<wpa-key> make setup-pi       # optional fixed WPA key instead of <ssid-suffix><ssid-suffix>
 AP_CONFIRM=1 make setup-pi           # bypass AP safety prompt intentionally
 CONFIGURE_AP=0 make setup-pi         # deps only, no AP setup
 ```

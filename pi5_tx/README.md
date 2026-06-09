@@ -25,6 +25,7 @@ The setup target:
 - creates `uv venv --system-site-packages`,
 - asks for explicit confirmation before switching Wi-Fi into AP mode,
 - configures a Wi-Fi AP with a randomized SSID,
+- uses the SSID suffix twice as the default WPA key, for example `DVS-8K2Q7A` -> `8K2Q7A8K2Q7A`,
 - prints the SSID/WPA key/Pi AP IP for the receiver user.
 
 Skip AP setup or intentionally bypass the interactive AP prompt if needed:

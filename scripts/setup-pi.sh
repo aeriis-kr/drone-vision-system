@@ -120,12 +120,10 @@ print("DVS-" + "".join(secrets.choice(alphabet) for _ in range(6)))
 PY
 }
 
-random_psk() {
-	"$PYTHON_BIN" - <<'PY'
-import secrets
-alphabet = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-print("dvs-" + "".join(secrets.choice(alphabet) for _ in range(12)))
-PY
+default_psk_from_ssid() {
+	local ssid="$1"
+	local suffix="${ssid##*-}"
+	printf '%s%s\n' "$suffix" "$suffix"
 }
 
 detect_wifi_iface() {
@@ -218,7 +216,7 @@ configure_ap() {
 	sudo_cmd="$(need_sudo)"
 	iface="$(detect_wifi_iface)"
 	ssid="${AP_SSID:-$(random_ssid)}"
-	psk="${AP_PSK:-$(random_psk)}"
+	psk="${AP_PSK:-$(default_psk_from_ssid "$ssid")}"
 	ap_ip="${AP_CIDR%/*}"
 
 	if [[ -z "$iface" ]]; then
@@ -226,7 +224,7 @@ configure_ap() {
 		exit 1
 	fi
 	if ((${#psk} < 8 || ${#psk} > 63)); then
-		echo "[setup-pi] AP_PSK must be 8-63 characters for WPA2." >&2
+		echo "[setup-pi] AP password must be 8-63 characters for WPA2. Set AP_PSK explicitly or use an SSID with a 4+ character suffix." >&2
 		exit 1
 	fi
 
