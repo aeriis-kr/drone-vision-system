@@ -55,6 +55,29 @@ For command preview without running hardware:
 make dry-run-pi
 ```
 
+## Stream with Pi-local inference
+
+Start the receiver in monitor-only mode so it displays clean video without local receiver inference or overlays:
+
+```bash
+NO_INFERENCE=1 NO_OVERLAY=1 make run-rx
+```
+
+Then run the Pi-local inference stream from the Pi:
+
+```bash
+STREAM_HOST=<receiver-ip> make run-inference-pi
+```
+
+This command uses one Pi camera owner, streams clean H264 video to the receiver, and decodes the same stream to local BGR frames on the Pi for YOLO inference.
+It logs detections only. It does not create `TriggerEvent`, call MAVLink, or command Pixhawk.
+
+For command preview without running hardware:
+
+```bash
+make dry-run-inference-pi
+```
+
 ## Pixhawk takeover smoke test
 
 ```bash

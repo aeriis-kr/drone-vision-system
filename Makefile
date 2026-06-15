@@ -21,10 +21,11 @@ IMGSZ ?= 640
 DEVICE ?= auto
 RX_DISPLAY ?= opencv
 NO_INFERENCE ?= 0
+INFERENCE_MAX_FRAMES ?=
 NO_FPS ?= 0
 NO_OVERLAY ?= 0
 
-.PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pi stream-to-rx dry-run-pi takeover-test-pi check lock clean distclean doctor
+.PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pi run-inference-pi stream-to-rx dry-run-pi dry-run-inference-pi takeover-test-pi check lock clean distclean doctor
 
 help:
 	@printf '%s\n' 'Drone Vision System project targets'
@@ -36,6 +37,7 @@ help:
 	@printf '%s\n' ''
 	@printf '%s\n' 'Run:'
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-pi'
+	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-inference-pi  Stream video while running Pi-local YOLO inference'
 	@printf '%s\n' '  scripts/stream-to-rx.sh <receiver-ip>'
 	@printf '%s\n' '  make run-rx'
 	@printf '%s\n' '  make takeover-test-pi  Manual LOITER->GUIDED->LOITER Pixhawk smoke test'
@@ -44,6 +46,7 @@ help:
 	@printf '%s\n' '  STREAM_PORT=5000 WIDTH=1280 HEIGHT=720 FPS=30 BITRATE=3000000'
 	@printf '%s\n' '  STREAM_FORMAT=mpegts|rtp MODEL=yolo11n.pt DEVICE=auto RX_DISPLAY=opencv|none NO_OVERLAY=1'
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> STREAM_PORT=5000 STREAM_FORMAT=mpegts|rtp'
+	@printf '%s\n' '  INFERENCE_MAX_FRAMES=10 limits Pi-local inference loop during tests'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Validation/maintenance:'
 	@printf '%s\n' '  make check           Compile Python sources and validate TOML'
@@ -70,10 +73,16 @@ install-rx:
 run-pi:
 	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" bash scripts/run-pi.sh
 
+run-inference-pi:
+	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" bash scripts/run-inference-pi.sh
+
 stream-to-rx: run-pi
 
 dry-run-pi:
 	STREAM_HOST="192.0.2.1" STREAM_PORT="$(STREAM_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" bash scripts/run-pi.sh --dry-run
+
+dry-run-inference-pi:
+	STREAM_HOST="192.0.2.1" STREAM_PORT="$(STREAM_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" bash scripts/run-inference-pi.sh --dry-run
 
 takeover-test-pi:
 	MAVLINK_DEVICE="$(MAVLINK_DEVICE)" MAVLINK_BAUD="$(MAVLINK_BAUD)" bash scripts/takeover-test-pi.sh
