@@ -57,11 +57,13 @@ make dry-run-pi
 
 ## Stream with Pi-local inference
 
-Start the receiver in monitor-only mode so it displays clean video without local receiver inference or overlays:
+Start the receiver without local receiver inference; leave overlays enabled so RX can render Pi metadata:
 
 ```bash
-NO_INFERENCE=1 NO_OVERLAY=1 make run-rx
+NO_INFERENCE=1 make run-rx
 ```
+
+RX overlays are drawn from Pi metadata on UDP 5001, so leave NO_OVERLAY unset unless you want clean video only.
 
 Then run the Pi-local object inference stream from the Pi:
 

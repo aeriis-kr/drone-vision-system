@@ -16,7 +16,9 @@ class AltitudeControlResult:
     executed: bool
     reason: str
     target_altitude_m: float | None = None
-
+    vehicle_mode: str | None = None
+    vehicle_armed: bool | None = None
+    vehicle_altitude_m: float | None = None
 
 @dataclass(slots=True)
 class SitlGestureAltitudeController:
@@ -44,13 +46,34 @@ class SitlGestureAltitudeController:
             f"gate={gate.reason}"
         )
         if not gate.allowed:
-            return AltitudeControlResult(False, gate.reason)
+            return AltitudeControlResult(
+                False,
+                gate.reason,
+                None,
+                vehicle.mode,
+                vehicle.armed,
+                vehicle.altitude_m,
+            )
         if vehicle.altitude_m is None:
-            return AltitudeControlResult(False, "altitude unavailable")
+            return AltitudeControlResult(
+                False,
+                "altitude unavailable",
+                None,
+                vehicle.mode,
+                vehicle.armed,
+                vehicle.altitude_m,
+            )
 
         target_altitude_m = self.target_altitude(vehicle, event)
         if not self.connection.set_mode(TAKEOVER_MODE, timeout_s=self.config.execute_timeout_s):
-            return AltitudeControlResult(False, "GUIDED takeover failed")
+            return AltitudeControlResult(
+                False,
+                "GUIDED takeover failed",
+                None,
+                vehicle.mode,
+                vehicle.armed,
+                vehicle.altitude_m,
+            )
 
         self.connection.send_relative_altitude_target(
             target_altitude_m,
@@ -63,7 +86,14 @@ class SitlGestureAltitudeController:
             "[gesture-control] executed "
             f"direction={event.direction} target_altitude_m={target_altitude_m:.2f}"
         )
-        return AltitudeControlResult(True, "ok", target_altitude_m)
+        return AltitudeControlResult(
+            True,
+            "ok",
+            target_altitude_m,
+            vehicle.mode,
+            vehicle.armed,
+            vehicle.altitude_m,
+        )
 
     def snapshot_vehicle(self) -> VehicleState:
         return self.connection.snapshot_vehicle_state(

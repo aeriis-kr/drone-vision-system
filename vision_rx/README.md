@@ -50,11 +50,14 @@ Useful overrides:
 STREAM_PORT=5000 WIDTH=1280 HEIGHT=720 MODEL=yolo11n.pt make run-rx
 ```
 
-Decode/display without YOLO:
+Decode/display without RX-local YOLO and render Pi-side pose metadata:
 
 ```bash
 NO_INFERENCE=1 make run-rx
+STREAM_HOST=<receiver-ip> METADATA_PORT=5001 make run-pose-inference-pi
 ```
+
+RX displays Pi-side detections, pose landmarks, raw/stable gesture, trigger state, and latest control result from metadata. RX-local YOLO is only a fallback/debug mode.
 
 Run YOLO while displaying the clean video stream without detection boxes:
 
@@ -62,7 +65,7 @@ Run YOLO while displaying the clean video stream without detection boxes:
 NO_OVERLAY=1 make run-rx
 ```
 
-Inference code now exposes structured detections through
+Inference code still exposes structured fallback detections through
 `vision_rx.inference.YoloDetector.detect()`. Pose landmark gesture helpers are
 available under `vision_rx.motion` for the future Pi-side
 `landmarks -> gesture -> TriggerEvent` path. Rendering can stay disabled.

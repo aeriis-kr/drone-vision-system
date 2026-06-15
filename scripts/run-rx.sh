@@ -19,6 +19,9 @@ RX_DISPLAY="${RX_DISPLAY:-${DVS_DISPLAY:-opencv}}"
 NO_INFERENCE="${NO_INFERENCE:-${DVS_NO_INFERENCE:-0}}"
 NO_FPS="${NO_FPS:-${DVS_NO_FPS:-0}}"
 NO_OVERLAY="${NO_OVERLAY:-${DVS_NO_OVERLAY:-0}}"
+METADATA_PORT="${METADATA_PORT:-${DVS_METADATA_PORT:-5001}}"
+METADATA_STALE_S="${METADATA_STALE_S:-${DVS_METADATA_STALE_S:-1.0}}"
+NO_METADATA="${NO_METADATA:-${DVS_NO_METADATA:-0}}"
 
 args=(
 	--bind-host "$BIND_HOST"
@@ -27,6 +30,8 @@ args=(
 	--height "$HEIGHT"
 	--fps "$FPS"
 	--format "$STREAM_FORMAT"
+	--metadata-port "$METADATA_PORT"
+	--metadata-stale-s "$METADATA_STALE_S"
 	--model "$MODEL"
 	--conf "$CONF"
 	--imgsz "$IMGSZ"
@@ -43,6 +48,11 @@ fi
 if [[ "$NO_OVERLAY" == "1" || "$NO_OVERLAY" == "true" ]]; then
 	args+=(--no-overlay)
 fi
+case "${NO_METADATA,,}" in
+	1|true|yes|y|on)
+		args+=(--no-metadata)
+		;;
+esac
 
 list_non_loopback_ipv4() {
 	if command -v ip >/dev/null 2>&1; then
@@ -99,6 +109,10 @@ EOF
 		[[ -n "${ip:-}" ]] || continue
 		printf '  STREAM_HOST=%s STREAM_PORT=%s WIDTH=%s HEIGHT=%s FPS=%s BITRATE=%s STREAM_FORMAT=%s make run-pi\n' \
 			"$ip" "$STREAM_PORT" "$WIDTH" "$HEIGHT" "$FPS" "$BITRATE" "$STREAM_FORMAT"
+		printf '  STREAM_HOST=%s STREAM_PORT=%s METADATA_PORT=%s make run-pose-inference-pi\n' \
+			"$ip" "$STREAM_PORT" "$METADATA_PORT"
+		printf '  STREAM_HOST=%s STREAM_PORT=%s METADATA_PORT=%s MAVLINK_SITL_DEVICE=udpin:0.0.0.0:14551 make run-pose-control-sitl-pi\n' \
+			"$ip" "$STREAM_PORT" "$METADATA_PORT"
 	done <<<"$rows"
 
 	cat <<EOF

@@ -37,7 +37,7 @@ if [[ -z "$STREAM_HOST" ]]; then
 [run-inference-pi] receiver IP is required.
 
 Connect the Pi and receiver to the same preconfigured AP/network, then run on the receiver:
-  NO_INFERENCE=1 NO_OVERLAY=1 make run-rx
+  NO_INFERENCE=1 make run-rx
 
 The receiver terminal will print the exact command to run here, for example:
   STREAM_HOST=<receiver-ip> make run-inference-pi
@@ -48,6 +48,9 @@ fi
 if [[ "$STREAM_HOST" == "127.0.0.1" || "$STREAM_HOST" == "localhost" ]]; then
 	echo "[run-inference-pi] warning: STREAM_HOST is $STREAM_HOST; set STREAM_HOST=<receiver-ip> for wireless streaming" >&2
 fi
+METADATA_HOST="${METADATA_HOST:-${DVS_METADATA_HOST:-$STREAM_HOST}}"
+METADATA_PORT="${METADATA_PORT:-${DVS_METADATA_PORT:-5001}}"
+NO_METADATA="${NO_METADATA:-${DVS_NO_METADATA:-0}}"
 
 args=(
 	--host "$STREAM_HOST"
@@ -57,6 +60,8 @@ args=(
 	--fps "$FPS"
 	--bitrate "$BITRATE"
 	--format "$STREAM_FORMAT"
+	--metadata-host "$METADATA_HOST"
+	--metadata-port "$METADATA_PORT"
 	--model "$MODEL"
 	--conf "$CONF"
 	--imgsz "$IMGSZ"
@@ -68,6 +73,12 @@ case "${NO_INFERENCE,,}" in
 		args+=(--no-inference)
 		;;
 esac
+case "${NO_METADATA,,}" in
+	1|true|yes|y|on)
+		args+=(--no-metadata)
+		;;
+esac
+
 
 if [[ -n "$INFERENCE_MAX_FRAMES" ]]; then
 	args+=(--max-frames "$INFERENCE_MAX_FRAMES")

@@ -23,6 +23,9 @@ class ReceiverConfig:
     inference: bool = True
     show_fps: bool = True
     render_detections: bool = True
+    metadata_enabled: bool = True
+    metadata_port: int = 5001
+    metadata_stale_s: float = 1.0
 
     @property
     def frame_bytes(self) -> int:
@@ -48,6 +51,11 @@ class ReceiverConfig:
             inference=not _truthy(os.getenv("DVS_NO_INFERENCE") or os.getenv("NO_INFERENCE")),
             show_fps=not _truthy(os.getenv("DVS_NO_FPS") or os.getenv("NO_FPS")),
             render_detections=not _truthy(os.getenv("DVS_NO_OVERLAY") or os.getenv("NO_OVERLAY")),
+            metadata_enabled=not _truthy(os.getenv("DVS_NO_METADATA") or os.getenv("NO_METADATA")),
+            metadata_port=int(os.getenv("DVS_METADATA_PORT") or os.getenv("METADATA_PORT") or "5001"),
+            metadata_stale_s=float(
+                os.getenv("DVS_METADATA_STALE_S") or os.getenv("METADATA_STALE_S") or "1.0"
+            ),
         )
 
 

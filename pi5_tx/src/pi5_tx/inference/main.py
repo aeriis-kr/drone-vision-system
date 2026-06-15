@@ -9,13 +9,20 @@ from typing import Any, Iterable
 
 from pi5_tx.automation.config import AutomationConfig
 from pi5_tx.automation.events import TriggerEvent
-from pi5_tx.automation.gesture_control import SitlGestureAltitudeController
+from pi5_tx.automation.gesture_control import AltitudeControlResult, SitlGestureAltitudeController
 from pi5_tx.automation.mavlink import PixhawkConnection
 from pi5_tx.config import StreamConfig
 from pi5_tx.inference.config import PiInferenceConfig
 from pi5_tx.inference.device import select_device
 from pi5_tx.inference.gesture import GestureConfig, GestureDebouncer, classify_vertical_gesture
 from pi5_tx.inference.gesture_types import Gesture, GestureDecision, Landmark
+from pi5_tx.inference.metadata import (
+    MetadataFrame,
+    MetadataSenderConfig,
+    MetadataUDPSender,
+    control_state_from_result,
+    trigger_state_from_event,
+)
 from pi5_tx.inference.pipeline import FramePipelineError, PiInferencePipeline
 from pi5_tx.inference.yolo import InferenceError, YoloDetector
 
@@ -23,6 +30,7 @@ from pi5_tx.inference.yolo import InferenceError, YoloDetector
 def build_parser() -> argparse.ArgumentParser:
     stream_defaults = StreamConfig.from_env()
     inference_defaults = PiInferenceConfig.from_env()
+    metadata_defaults = MetadataSenderConfig.from_env(stream_defaults.host)
     parser = argparse.ArgumentParser(
         description="Stream Raspberry Pi H264 video while running Pi-local YOLO inference.",
     )
@@ -51,6 +59,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--preview", action="store_true", default=stream_defaults.preview)
     parser.add_argument("--dry-run", action="store_true", default=stream_defaults.dry_run)
+    parser.add_argument("--metadata-host", default=metadata_defaults.host)
+    parser.add_argument("--metadata-port", type=int, default=metadata_defaults.port)
+    parser.add_argument(
+        "--no-metadata",
+        action="store_false",
+        dest="metadata_enabled",
+        default=metadata_defaults.enabled,
+    )
     parser.add_argument("--model", default=inference_defaults.model)
     parser.add_argument(
         "--pose",
@@ -164,8 +180,19 @@ def main() -> int:
         enabled=not args.no_inference,
         max_frames=args.max_frames,
     )
+    metadata_config = MetadataSenderConfig(
+        host=args.metadata_host or stream_config.host,
+        port=args.metadata_port,
+        enabled=args.metadata_enabled and inference_config.enabled,
+    )
+    metadata_sender = MetadataUDPSender(metadata_config) if metadata_config.enabled else None
     selected_device = select_device(args.device)
 
+    metadata_status = (
+        f"metadata={metadata_config.host}:{metadata_config.port}"
+        if metadata_config.enabled
+        else "metadata=disabled"
+    )
     print(
         "[pi5-inference] "
         f"stream={stream_config.stream_format} "
@@ -173,7 +200,8 @@ def main() -> int:
         f"resolution={stream_config.width}x{stream_config.height} "
         f"model={inference_config.model} "
         f"device={selected_device} "
-        f"inference={inference_config.enabled}"
+        f"inference={inference_config.enabled} "
+        f"{metadata_status}"
     )
 
     detector = YoloDetector(
@@ -209,6 +237,9 @@ def main() -> int:
             inference_config.max_frames,
             gesture_runtime=build_gesture_runtime(args.pose),
             gesture_controller=gesture_controller,
+            metadata_sender=metadata_sender,
+            frame_width=stream_config.width,
+            frame_height=stream_config.height,
         )
     except (FramePipelineError, InferenceError, RuntimeError, ValueError) as exc:
         print(f"[pi5-inference] error: {exc}")
@@ -216,6 +247,9 @@ def main() -> int:
     except KeyboardInterrupt:
         print("\n[pi5-inference] stopping")
         return 130
+    finally:
+        if metadata_sender is not None:
+            metadata_sender.close()
 
 
 def run_loop(
@@ -224,10 +258,15 @@ def run_loop(
     max_frames: int | None,
     gesture_runtime: GestureRuntime | None = None,
     gesture_controller: SitlGestureAltitudeController | None = None,
+    metadata_sender: MetadataUDPSender | None = None,
+    frame_width: int | None = None,
+    frame_height: int | None = None,
 ) -> int:
     total_frames = 0
     window_frames = 0
     window_start = time.monotonic()
+    latest_trigger: TriggerEvent | None = None
+    latest_control: AltitudeControlResult | None = None
 
     for frame in frames:
         result = detector.detect(frame)
@@ -265,6 +304,7 @@ def run_loop(
             if stable != previous_stable:
                 event = trigger_event_from_gesture(decision, stable, now)
                 if event is not None:
+                    latest_trigger = event
                     print(
                         "[pi5-inference] "
                         f"trigger direction={event.direction} "
@@ -274,11 +314,31 @@ def run_loop(
                     )
                     if gesture_controller is not None:
                         control_result = gesture_controller.handle_event(event, now)
+                        latest_control = control_result
                         print(
                             "[pi5-inference] "
                             f"control executed={control_result.executed} "
                             f"reason={control_result.reason}"
                         )
+        else:
+            decision = GestureDecision(Gesture.STOP, 0.0, "gesture disabled")
+            stable = Gesture.STOP
+
+        if metadata_sender is not None:
+            metadata_sender.send(
+                MetadataFrame(
+                    frame_id=total_frames,
+                    created_at_s=now,
+                    width=frame_width or result.frame.shape[1],
+                    height=frame_height or result.frame.shape[0],
+                    detections=result.detections,
+                    poses=result.poses,
+                    decision=decision,
+                    stable=stable,
+                    trigger=trigger_state_from_event(latest_trigger),
+                    control=control_state_from_result(latest_control),
+                )
+            )
 
         if max_frames is not None and total_frames >= max_frames:
             return 0

@@ -7,6 +7,9 @@ import importlib
 import time
 from typing import Any
 
+from vision_rx.metadata import MetadataReceiver
+from vision_rx.metadata_overlay import render_metadata_overlay
+
 
 class NullDisplay:
     def show(self, _frame: Any) -> bool:
@@ -63,6 +66,14 @@ def build_parser() -> argparse.ArgumentParser:
         default=defaults.render_detections,
         help="run YOLO but display the clean decoded frame without detection boxes",
     )
+    parser.add_argument("--metadata-port", type=int, default=defaults.metadata_port)
+    parser.add_argument("--metadata-stale-s", type=float, default=defaults.metadata_stale_s)
+    parser.add_argument(
+        "--no-metadata",
+        action="store_false",
+        dest="metadata_enabled",
+        default=defaults.metadata_enabled,
+    )
     return parser
 
 
@@ -93,12 +104,17 @@ def main() -> int:
         inference=args.inference,
         show_fps=args.show_fps,
         render_detections=args.render_detections,
+        metadata_enabled=args.metadata_enabled,
+        metadata_port=args.metadata_port,
+        metadata_stale_s=args.metadata_stale_s,
     )
 
+    metadata_status = f"metadata=:{config.metadata_port}" if config.metadata_enabled else "metadata=disabled"
     print(
         f"[vision-rx] platform={backend.name} stream={config.stream_format} "
         f"bind={config.bind_host}:{config.port} resolution={config.width}x{config.height} "
-        f"device={selected_device} inference={config.inference} overlay={config.render_detections} display={config.display}"
+        f"device={selected_device} inference={config.inference} overlay={config.render_detections} "
+        f"display={config.display} {metadata_status}"
     )
 
     detector = yolo_module.YoloDetector(
@@ -109,10 +125,22 @@ def main() -> int:
         enabled=config.inference,
     )
     display = build_display(config.display)
+    metadata_receiver = MetadataReceiver(config.bind_host, config.metadata_port) if config.metadata_enabled else None
 
     try:
+        if metadata_receiver is not None:
+            metadata_receiver.start()
         with receiver_module.FFmpegUDPReceiver(config) as receiver:
-            return run_loop(receiver, detector, display, config.show_fps, config.render_detections)
+            return run_loop(
+                receiver,
+                detector,
+                display,
+                config.show_fps,
+                config.render_detections,
+                metadata_receiver=metadata_receiver,
+                metadata_stale_s=config.metadata_stale_s,
+                metadata_port=config.metadata_port,
+            )
     except (receiver_module.ReceiverError, yolo_module.InferenceError, RuntimeError) as exc:
         print(f"[vision-rx] error: {exc}")
         return 1
@@ -120,6 +148,8 @@ def main() -> int:
         print("\n[vision-rx] stopping receiver")
         return 130
     finally:
+        if metadata_receiver is not None:
+            metadata_receiver.close()
         display.close()
 
 
@@ -138,7 +168,16 @@ def build_display(name: str) -> Any:
     raise ValueError(f"unsupported display backend: {name}")
 
 
-def run_loop(receiver: Any, detector: Any, display: Any, show_fps: bool, render_detections: bool) -> int:
+def run_loop(
+    receiver: Any,
+    detector: Any,
+    display: Any,
+    show_fps: bool,
+    render_detections: bool,
+    metadata_receiver: Any | None = None,
+    metadata_stale_s: float = 1.0,
+    metadata_port: int = 5001,
+) -> int:
     last_report = time.monotonic()
     frame_count = 0
     fps = 0.0
@@ -153,8 +192,34 @@ def run_loop(receiver: Any, detector: Any, display: Any, show_fps: bool, render_
             last_report = now
             print(f"[vision-rx] fps={fps:.1f}")
 
-        result = detector.detect(frame)
-        output = detector.render(result.frame, result.detections) if render_detections else result.frame
+        received = metadata_receiver.latest() if metadata_receiver is not None else None
+        if received is None:
+            result = detector.detect(frame)
+            output = detector.render(result.frame, result.detections) if render_detections else result.frame
+            if (
+                render_detections
+                and metadata_receiver is not None
+                and getattr(detector, "enabled", False) is False
+            ):
+                output = render_metadata_overlay(
+                    output,
+                    None,
+                    age_s=None,
+                    stale_after_s=metadata_stale_s,
+                    waiting=True,
+                    metadata_port=metadata_port,
+                )
+        else:
+            output = frame
+            if render_detections:
+                output = render_metadata_overlay(
+                    output,
+                    received.frame,
+                    age_s=time.monotonic() - received.received_at_s,
+                    stale_after_s=metadata_stale_s,
+                    metadata_port=metadata_port,
+                )
+
         if show_fps:
             output = draw_fps(output, fps)
         if not display.show(output):
