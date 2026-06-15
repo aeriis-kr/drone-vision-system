@@ -1,0 +1,67 @@
+FROM ubuntu:24.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG ARDUPILOT_REF=master
+
+ENV USER=ardupilot
+ENV HOME=/home/ardupilot
+ENV PATH="/home/ardupilot/.local/bin:/home/ardupilot/ardupilot/Tools/autotest:${PATH}"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  git \
+  sudo \
+  bash \
+  ca-certificates \
+  curl \
+  wget \
+  lsb-release \
+  python3 \
+  python3-pip \
+  python3-venv \
+  python3-dev \
+  build-essential \
+  ccache \
+  gawk \
+  make \
+  cmake \
+  ninja-build \
+  pkg-config \
+  libtool \
+  autoconf \
+  automake \
+  unzip \
+  zip \
+  rsync \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -s /bin/bash ardupilot && \
+  echo "ardupilot ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ardupilot && \
+  chmod 0440 /etc/sudoers.d/ardupilot
+
+USER ardupilot
+WORKDIR /home/ardupilot
+
+RUN git clone https://github.com/ArduPilot/ardupilot.git
+
+WORKDIR /home/ardupilot/ardupilot
+
+RUN git checkout ${ARDUPILOT_REF} && \
+  git submodule update --init --recursive
+
+RUN ./Tools/environment_install/install-prereqs-ubuntu.sh -y
+
+RUN bash -lc "source ~/.profile && ./waf configure --board sitl && ./waf copter"
+
+COPY --chown=ardupilot:ardupilot scripts/run-sitl-container.sh /home/ardupilot/run-sitl-container.sh
+RUN chmod +x /home/ardupilot/run-sitl-container.sh
+
+EXPOSE 5760/tcp
+EXPOSE 14550/udp
+EXPOSE 14551/udp
+
+ENV SITL_SMOKE_HOST=127.0.0.1
+ENV SITL_SMOKE_PORT=14551
+ENV SITL_QGC_HOST=127.0.0.1
+ENV SITL_QGC_PORT=14550
+
+CMD ["/home/ardupilot/run-sitl-container.sh"]

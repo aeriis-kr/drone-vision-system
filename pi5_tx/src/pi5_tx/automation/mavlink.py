@@ -39,11 +39,16 @@ class PixhawkConnection:
         self.target = target
 
     @classmethod
-    def connect(cls, device: str, baud: int) -> "PixhawkConnection":
+    def connect(
+        cls,
+        device: str,
+        baud: int,
+        timeout_s: float = 15.0,
+    ) -> "PixhawkConnection":
         mavutil = _mavutil()
         master = mavutil.mavlink_connection(device, baud=baud)
         connection = cls(master)
-        connection.target = connection.wait_target()
+        connection.target = connection.wait_target(timeout_s=timeout_s)
         return connection
 
     def wait_target(self, timeout_s: float = 15.0) -> MavlinkTarget:

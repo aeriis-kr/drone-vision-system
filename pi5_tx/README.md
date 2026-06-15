@@ -87,6 +87,25 @@ make dry-run-inference-pi
 make dry-run-pose-inference-pi
 ```
 
+## ArduPilot SITL MAVLink smoke test
+
+Build and run the ArduCopter SITL container from the repository root. The Makefile defaults to Podman when available, then Docker:
+
+```bash
+make build-sitl
+make run-sitl
+```
+
+`make run-sitl` uses host networking by default. QGroundControl should listen on UDP `14550`; MAVProxy sends MAVLink to QGroundControl on `127.0.0.1:14550` and to the pymavlink smoke-test UDP listener on `127.0.0.1:14551`. This avoids binding an extra MAVProxy TCP port that can collide with SITL.
+
+In another terminal, run the non-interactive MAVLink smoke test against the dedicated UDP smoke-test stream:
+
+```bash
+make sitl-smoke-test-pi
+```
+
+The SITL test listens on `udpin:127.0.0.1:14551`, then runs LOITER -> GUIDED -> LOITER with an optional STABILIZE return. It validates the pymavlink mode-change path before using UART hardware; it still sends no altitude or movement setpoints. To force Docker or bridge networking, override `CONTAINER_ENGINE=docker` or `SITL_NETWORK=bridge SITL_QGC_HOST=<host-address> SITL_SMOKE_HOST=<host-address>`.
+
 ## Pixhawk takeover smoke test
 
 ```bash

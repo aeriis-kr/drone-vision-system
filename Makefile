@@ -24,8 +24,17 @@ NO_INFERENCE ?= 0
 INFERENCE_MAX_FRAMES ?=
 NO_FPS ?= 0
 NO_OVERLAY ?= 0
+CONTAINER_ENGINE ?= $(shell command -v podman >/dev/null 2>&1 && printf podman || printf docker)
+SITL_IMAGE ?= drone-vision-ardupilot-sitl
+SITL_CONTAINER ?= drone-vision-sitl
+SITL_NETWORK ?= host
+SITL_SMOKE_HOST ?= 127.0.0.1
+SITL_SMOKE_PORT ?= 14551
+SITL_QGC_HOST ?= 127.0.0.1
+SITL_QGC_PORT ?= 14550
+MAVLINK_SITL_DEVICE ?= udpin:127.0.0.1:$(SITL_SMOKE_PORT)
 
-.PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pi run-inference-pi run-pose-inference-pi stream-to-rx dry-run-pi dry-run-inference-pi dry-run-pose-inference-pi takeover-test-pi check lock clean distclean doctor
+.PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pi run-inference-pi run-pose-inference-pi stream-to-rx dry-run-pi dry-run-inference-pi dry-run-pose-inference-pi takeover-test-pi build-sitl run-sitl sitl-smoke-test-pi check lock clean distclean doctor
 
 help:
 	@printf '%s\n' 'Drone Vision System project targets'
@@ -42,6 +51,9 @@ help:
 	@printf '%s\n' '  scripts/stream-to-rx.sh <receiver-ip>'
 	@printf '%s\n' '  make run-rx'
 	@printf '%s\n' '  make takeover-test-pi  Manual LOITER->GUIDED->LOITER Pixhawk smoke test'
+	@printf '%s\n' '  make build-sitl       Build ArduPilot SITL image with podman/docker'
+	@printf '%s\n' '  make run-sitl         Run ArduCopter SITL; default host network sends UDP to QGC 14550'
+	@printf '%s\n' '  make sitl-smoke-test-pi  Non-interactive LOITER->GUIDED->LOITER SITL MAVLink smoke test'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Common overrides:'
 	@printf '%s\n' '  STREAM_PORT=5000 WIDTH=1280 HEIGHT=720 FPS=30 BITRATE=3000000'
@@ -93,6 +105,20 @@ dry-run-pose-inference-pi:
 
 takeover-test-pi:
 	MAVLINK_DEVICE="$(MAVLINK_DEVICE)" MAVLINK_BAUD="$(MAVLINK_BAUD)" bash scripts/takeover-test-pi.sh
+
+
+build-sitl:
+	"$(CONTAINER_ENGINE)" build -f Dockerfile.SITL -t "$(SITL_IMAGE)" .
+
+run-sitl:
+	@if [[ "$(SITL_NETWORK)" == "host" ]]; then \
+		"$(CONTAINER_ENGINE)" run --rm -it --name "$(SITL_CONTAINER)" --network host -e SITL_SMOKE_HOST="$(SITL_SMOKE_HOST)" -e SITL_SMOKE_PORT="$(SITL_SMOKE_PORT)" -e SITL_QGC_HOST="$(SITL_QGC_HOST)" -e SITL_QGC_PORT="$(SITL_QGC_PORT)" "$(SITL_IMAGE)"; \
+	else \
+		"$(CONTAINER_ENGINE)" run --rm -it --name "$(SITL_CONTAINER)" -p "$(SITL_QGC_PORT):$(SITL_QGC_PORT)/udp" -p "$(SITL_SMOKE_PORT):$(SITL_SMOKE_PORT)/udp" -e SITL_SMOKE_HOST="$(SITL_SMOKE_HOST)" -e SITL_SMOKE_PORT="$(SITL_SMOKE_PORT)" -e SITL_QGC_HOST="$(SITL_QGC_HOST)" -e SITL_QGC_PORT="$(SITL_QGC_PORT)" "$(SITL_IMAGE)"; \
+	fi
+
+sitl-smoke-test-pi:
+	MAVLINK_DEVICE="$(MAVLINK_SITL_DEVICE)" MAVLINK_BAUD="$(MAVLINK_BAUD)" bash scripts/sitl-smoke-test-pi.sh
 
 run-rx:
 	BIND_HOST="$(BIND_HOST)" STREAM_PORT="$(STREAM_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" RX_DISPLAY="$(RX_DISPLAY)" NO_INFERENCE="$(NO_INFERENCE)" NO_FPS="$(NO_FPS)" NO_OVERLAY="$(NO_OVERLAY)" bash scripts/run-rx.sh
