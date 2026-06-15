@@ -7,6 +7,7 @@ import importlib
 from typing import Any
 
 from pi5_tx.inference.detections import Detection, InferenceResult
+from pi5_tx.inference.pose import landmarks_from_yolo_pose_result
 
 
 class InferenceError(RuntimeError):
@@ -36,9 +37,11 @@ class YoloDetector:
         )
         if not results:
             return InferenceResult(frame=frame, detections=())
+        result = results[0]
         return InferenceResult(
             frame=frame,
-            detections=self._detections_from_result(results[0]),
+            detections=self._detections_from_result(result),
+            poses=landmarks_from_yolo_pose_result(result),
         )
 
     def _detections_from_result(self, result: Any) -> tuple[Detection, ...]:

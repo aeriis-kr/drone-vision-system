@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import time
 from typing import Any, Iterable
 
+from pi5_tx.automation.events import TriggerEvent
 from pi5_tx.config import StreamConfig
 from pi5_tx.inference.config import PiInferenceConfig
 from pi5_tx.inference.device import select_device
+from pi5_tx.inference.gesture import GestureConfig, GestureDebouncer, classify_vertical_gesture
+from pi5_tx.inference.gesture_types import Gesture, GestureDecision, Landmark
 from pi5_tx.inference.pipeline import FramePipelineError, PiInferencePipeline
 from pi5_tx.inference.yolo import InferenceError, YoloDetector
 
@@ -61,6 +65,68 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-frames", type=int, default=inference_defaults.max_frames)
     return parser
 
+@dataclass(slots=True)
+class GestureRuntime:
+    config: GestureConfig
+    debouncer: GestureDebouncer
+    stable: Gesture = Gesture.STOP
+
+
+def build_gesture_runtime(enabled: bool) -> GestureRuntime | None:
+    if not enabled:
+        return None
+    config = GestureConfig()
+    return GestureRuntime(
+        config=config,
+        debouncer=GestureDebouncer(config.debounce_s, config.debounce_missing_grace_s),
+    )
+
+
+def select_gesture_decision(
+    poses: tuple[tuple[Landmark, ...], ...],
+    config: GestureConfig,
+) -> GestureDecision:
+    if not poses:
+        return GestureDecision(Gesture.STOP, 0.0, "no pose")
+
+    decisions = tuple(classify_vertical_gesture(pose, config) for pose in poses)
+    active = tuple(decision for decision in decisions if decision.gesture in (Gesture.UP, Gesture.DOWN))
+    if active:
+        gestures = {decision.gesture for decision in active}
+        if len(gestures) == 1:
+            return max(active, key=lambda decision: decision.confidence)
+        return GestureDecision(
+            Gesture.STOP,
+            min(decision.confidence for decision in active),
+            "conflicting person gestures",
+        )
+
+    stop_decisions = tuple(decision for decision in decisions if decision.gesture == Gesture.STOP)
+    if stop_decisions:
+        return max(stop_decisions, key=lambda decision: decision.confidence)
+
+    fallback = max(decisions, key=lambda decision: decision.confidence)
+    return GestureDecision(Gesture.STOP, fallback.confidence, fallback.reason)
+
+
+def trigger_event_from_gesture(
+    decision: GestureDecision,
+    stable: Gesture,
+    now_s: float,
+) -> TriggerEvent | None:
+    if stable not in (Gesture.UP, Gesture.DOWN):
+        return None
+    return TriggerEvent(
+        direction="UP" if stable is Gesture.UP else "DOWN",
+        confidence=decision.confidence,
+        source="pi5-inference-pose",
+        created_at_s=now_s,
+        reason=decision.reason,
+    )
+
+
+
+
 
 def main() -> int:
     args = build_parser().parse_args()
@@ -107,7 +173,12 @@ def main() -> int:
     pipeline = PiInferencePipeline(stream_config, inference_config)
 
     try:
-        return run_loop(pipeline.frames(), detector, inference_config.max_frames)
+        return run_loop(
+            pipeline.frames(),
+            detector,
+            inference_config.max_frames,
+            gesture_runtime=build_gesture_runtime(args.pose),
+        )
     except (FramePipelineError, InferenceError, RuntimeError, ValueError) as exc:
         print(f"[pi5-inference] error: {exc}")
         return 1
@@ -116,7 +187,12 @@ def main() -> int:
         return 130
 
 
-def run_loop(frames: Iterable[Any], detector: YoloDetector, max_frames: int | None) -> int:
+def run_loop(
+    frames: Iterable[Any],
+    detector: YoloDetector,
+    max_frames: int | None,
+    gesture_runtime: GestureRuntime | None = None,
+) -> int:
     total_frames = 0
     window_frames = 0
     window_start = time.monotonic()
@@ -140,6 +216,30 @@ def run_loop(frames: Iterable[Any], detector: YoloDetector, max_frames: int | No
                 for detection in result.detections
             )
             print(f"[pi5-inference] detections={detections}")
+
+        if gesture_runtime is not None:
+            decision = select_gesture_decision(result.poses, gesture_runtime.config)
+            previous_stable = gesture_runtime.stable
+            stable = gesture_runtime.debouncer.update(decision.gesture, now_s=now)
+            gesture_runtime.stable = stable
+            if decision.gesture in (Gesture.UP, Gesture.DOWN) or stable != previous_stable:
+                print(
+                    "[pi5-inference] "
+                    f"gesture={decision.gesture} "
+                    f"stable={stable} "
+                    f"confidence={decision.confidence:.2f} "
+                    f"reason={decision.reason}"
+                )
+            if stable != previous_stable:
+                event = trigger_event_from_gesture(decision, stable, now)
+                if event is not None:
+                    print(
+                        "[pi5-inference] "
+                        f"trigger direction={event.direction} "
+                        f"confidence={event.confidence:.2f} "
+                        f"source={event.source} "
+                        f"reason={event.reason}"
+                    )
 
         if max_frames is not None and total_frames >= max_frames:
             return 0

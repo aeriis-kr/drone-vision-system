@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from pi5_tx.inference.gesture_types import Landmark
+
 
 @dataclass(frozen=True)
 class Detection:
@@ -33,3 +35,4 @@ class InferenceResult:
 
     frame: Any
     detections: tuple[Detection, ...]
+    poses: tuple[tuple[Landmark, ...], ...] = ()

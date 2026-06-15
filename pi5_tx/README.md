@@ -75,9 +75,10 @@ Use pose inference explicitly when you want the pose model instead of the defaul
 STREAM_HOST=<receiver-ip> make run-pose-inference-pi
 ```
 
-The default command uses `yolo11n.pt`. The pose command uses `yolo11n-pose.pt`.
+`make run-inference-pi` uses `yolo11n.pt` for object detections.
+`make run-pose-inference-pi` uses `yolo11n-pose.pt`, converts pose keypoints into UP/DOWN/STOP gesture decisions, debounces UP/DOWN for 3 seconds, and logs `[pi5-inference] gesture=...` plus `[pi5-inference] trigger ...` when a stable UP/DOWN trigger is emitted.
 Both commands use one Pi camera owner, stream clean H264 video to the receiver, and decode the same stream to local BGR frames on the Pi for YOLO inference.
-They log detections only. They do not create `TriggerEvent`, call MAVLink, or command Pixhawk.
+The trigger log does not command Pixhawk; MAVLink flight control remains separate until vehicle-state and altitude-command execution are implemented.
 
 For command preview without running hardware:
 
