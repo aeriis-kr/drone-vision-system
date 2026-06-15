@@ -88,7 +88,7 @@ class GestureRuntime:
 def build_gesture_runtime(enabled: bool) -> GestureRuntime | None:
     if not enabled:
         return None
-    config = GestureConfig()
+    config = GestureConfig.from_env()
     return GestureRuntime(
         config=config,
         debouncer=GestureDebouncer(config.debounce_s, config.debounce_missing_grace_s),

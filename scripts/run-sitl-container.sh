@@ -13,7 +13,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-./Tools/autotest/sim_vehicle.py -v ArduCopter -f quad --no-mavproxy &
+./Tools/autotest/sim_vehicle.py -v ArduCopter -f quad --add-param-file="$HOME/sitl-unlimited-battery.parm" --no-mavproxy &
 sim_pid="$!"
 
 python3 - <<'PY'
@@ -39,5 +39,4 @@ exec mavproxy.py \
 	--master=tcp:127.0.0.1:5760 \
 	--out="udp:${SITL_QGC_HOST:-127.0.0.1}:${SITL_QGC_PORT:-14550}" \
 	--out="udp:${SITL_SMOKE_HOST:-127.0.0.1}:${SITL_SMOKE_PORT:-14551}" \
-	--daemon \
 	--retries=120

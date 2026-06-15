@@ -1,0 +1,8 @@
+# Keep classroom SITL sessions from ending due to simulated battery drain.
+SIM_BATT_CAP_AH 0
+SIM_BATT_VOLTAGE 12.6
+BATT_LOW_VOLT 0
+BATT_LOW_MAH 0
+BATT_CRT_VOLT 0
+BATT_CRT_MAH 0
+BATT_ARM_VOLT 0

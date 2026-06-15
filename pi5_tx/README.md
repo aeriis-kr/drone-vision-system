@@ -98,6 +98,8 @@ make run-sitl
 
 `make run-sitl` uses host networking by default. QGroundControl should listen on UDP `14550`; MAVProxy sends MAVLink to QGroundControl on `127.0.0.1:14550` and to the pymavlink smoke-test UDP listener on `127.0.0.1:14551`. This avoids binding an extra MAVProxy TCP port that can collide with SITL.
 
+The `make run-sitl` terminal stays attached to the MAVProxy prompt, so SITL RC overrides can be typed there directly, for example `rc 3 1500` to center throttle before switching to LOITER.
+
 In another terminal, run the non-interactive MAVLink smoke test against the dedicated UDP smoke-test stream:
 
 ```bash

@@ -53,6 +53,7 @@ RUN ./Tools/environment_install/install-prereqs-ubuntu.sh -y
 RUN bash -lc "source ~/.profile && ./waf configure --board sitl && ./waf copter"
 
 COPY --chown=ardupilot:ardupilot scripts/run-sitl-container.sh /home/ardupilot/run-sitl-container.sh
+COPY --chown=ardupilot:ardupilot scripts/sitl-unlimited-battery.parm /home/ardupilot/sitl-unlimited-battery.parm
 RUN chmod +x /home/ardupilot/run-sitl-container.sh
 
 EXPOSE 5760/tcp

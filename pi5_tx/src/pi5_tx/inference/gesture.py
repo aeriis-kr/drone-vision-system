@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import acos, degrees, sqrt
+import os
 from time import monotonic
 from typing import Iterable, Literal, Sequence
 
@@ -40,7 +41,24 @@ class GestureConfig:
     allow_partial_torso_reference: bool = False
     fallback_torso_height_shoulder_ratio: float = 1.5
     debounce_s: float = 3.0
-    debounce_missing_grace_s: float = 0.35
+    debounce_missing_grace_s: float = 1.0
+
+    @classmethod
+    def from_env(cls) -> "GestureConfig":
+        """Build gesture debounce settings from DVS_* or Makefile-friendly env."""
+
+        return cls(
+            debounce_s=float(
+                os.getenv("DVS_GESTURE_DEBOUNCE_S")
+                or os.getenv("GESTURE_DEBOUNCE_S")
+                or "3.0"
+            ),
+            debounce_missing_grace_s=float(
+                os.getenv("DVS_GESTURE_MISSING_GRACE_S")
+                or os.getenv("GESTURE_MISSING_GRACE_S")
+                or "1.0"
+            ),
+        )
 
     def arm_pose_options(self, torso_height: float, shoulder_span: float) -> "ArmPoseOptions":
         return ArmPoseOptions(
