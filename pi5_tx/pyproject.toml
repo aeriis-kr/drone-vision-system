@@ -11,6 +11,7 @@ pi5-tx = "pi5_tx.main:main"
 pi5-takeover-test = "pi5_tx.automation.takeover_test:main"
 pi5-inference = "pi5_tx.inference.main:main"
 pi5-sitl-smoke-test = "pi5_tx.automation.sitl_smoke_test:main"
+pi5-sitl-gesture-control-test = "pi5_tx.automation.sitl_gesture_control_test:main"
 
 [build-system]
 requires = ["hatchling"]

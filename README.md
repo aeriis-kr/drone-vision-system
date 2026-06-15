@@ -68,6 +68,8 @@ MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make takeover-test-pi
 make build-sitl
 make run-sitl
 make sitl-smoke-test-pi
+make sitl-gesture-control-test-pi
+STREAM_HOST=<receiver-ip> make run-pose-control-sitl-pi
 NO_INFERENCE=1 make run-rx
 scripts/stream-to-rx.sh <receiver-ip>
 ```

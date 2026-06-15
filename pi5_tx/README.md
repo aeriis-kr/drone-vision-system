@@ -78,7 +78,7 @@ STREAM_HOST=<receiver-ip> make run-pose-inference-pi
 `make run-inference-pi` uses `yolo11n.pt` for object detections.
 `make run-pose-inference-pi` uses `yolo11n-pose.pt`, converts pose keypoints into UP/DOWN/STOP gesture decisions, debounces UP/DOWN for 3 seconds, and logs `[pi5-inference] gesture=...` plus `[pi5-inference] trigger ...` when a stable UP/DOWN trigger is emitted.
 Both commands use one Pi camera owner, stream clean H264 video to the receiver, and decode the same stream to local BGR frames on the Pi for YOLO inference.
-The trigger log does not command Pixhawk; MAVLink flight control remains separate until vehicle-state and altitude-command execution are implemented.
+Use `make run-pose-control-sitl-pi` only with ArduCopter SITL already prepared in LOITER; it connects stable UP/DOWN triggers to the SITL MAVLink altitude controller. The default pose command still only logs triggers and does not command Pixhawk.
 
 For command preview without running hardware:
 
@@ -105,6 +105,22 @@ make sitl-smoke-test-pi
 ```
 
 The SITL test listens on `udpin:127.0.0.1:14551`, then runs LOITER -> GUIDED -> LOITER with an optional STABILIZE return. It validates the pymavlink mode-change path before using UART hardware; it still sends no altitude or movement setpoints. To force Docker or bridge networking, override `CONTAINER_ENGINE=docker` or `SITL_NETWORK=bridge SITL_QGC_HOST=<host-address> SITL_SMOKE_HOST=<host-address>`.
+
+For the first altitude-control check, keep `make run-sitl` running and execute:
+
+```bash
+make sitl-gesture-control-test-pi
+```
+
+That SITL-only test arms/takes off in GUIDED, leaves the simulated vehicle in LOITER, injects stable UP then DOWN triggers, sends one relative-altitude target per trigger, returns to LOITER after each command burst, then lands unless `--skip-land` is passed through `scripts/sitl-gesture-control-test-pi.sh`.
+
+To drive the same controller from live Pi pose gestures, leave SITL armed in LOITER first, for example by running the gesture-control test through the script with `--skip-land`, then start:
+
+```bash
+STREAM_HOST=<receiver-ip> make run-pose-control-sitl-pi
+```
+
+This path still uses the SITL UDP listener on `127.0.0.1:14551`; it is not the UART/Pixhawk hardware path.
 
 ## Pixhawk takeover smoke test
 

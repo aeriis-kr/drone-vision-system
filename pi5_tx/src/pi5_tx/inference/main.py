@@ -7,7 +7,10 @@ from dataclasses import dataclass
 import time
 from typing import Any, Iterable
 
+from pi5_tx.automation.config import AutomationConfig
 from pi5_tx.automation.events import TriggerEvent
+from pi5_tx.automation.gesture_control import SitlGestureAltitudeController
+from pi5_tx.automation.mavlink import PixhawkConnection
 from pi5_tx.config import StreamConfig
 from pi5_tx.inference.config import PiInferenceConfig
 from pi5_tx.inference.device import select_device
@@ -62,6 +65,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=not inference_defaults.enabled,
     )
+    automation_defaults = AutomationConfig.from_env()
+    parser.add_argument(
+        "--sitl-control",
+        action="store_true",
+        default=False,
+        help="SITL-only: execute stable pose gestures as MAVLink altitude steps",
+    )
+    parser.add_argument("--mavlink-device", default=automation_defaults.device)
+    parser.add_argument("--mavlink-baud", type=int, default=automation_defaults.baud)
+    parser.add_argument("--mavlink-connect-timeout-s", type=float, default=30.0)
     parser.add_argument("--max-frames", type=int, default=inference_defaults.max_frames)
     return parser
 
@@ -173,11 +186,29 @@ def main() -> int:
     pipeline = PiInferencePipeline(stream_config, inference_config)
 
     try:
+        gesture_controller = None
+        if args.sitl_control:
+            if not args.pose:
+                raise ValueError("--sitl-control requires --pose")
+            print(
+                "[pi5-inference] "
+                f"sitl_control=enabled mavlink={args.mavlink_device}"
+            )
+            gesture_controller = SitlGestureAltitudeController(
+                PixhawkConnection.connect(
+                    args.mavlink_device,
+                    args.mavlink_baud,
+                    timeout_s=args.mavlink_connect_timeout_s,
+                ),
+                AutomationConfig.from_env(),
+            )
+
         return run_loop(
             pipeline.frames(),
             detector,
             inference_config.max_frames,
             gesture_runtime=build_gesture_runtime(args.pose),
+            gesture_controller=gesture_controller,
         )
     except (FramePipelineError, InferenceError, RuntimeError, ValueError) as exc:
         print(f"[pi5-inference] error: {exc}")
@@ -192,6 +223,7 @@ def run_loop(
     detector: YoloDetector,
     max_frames: int | None,
     gesture_runtime: GestureRuntime | None = None,
+    gesture_controller: SitlGestureAltitudeController | None = None,
 ) -> int:
     total_frames = 0
     window_frames = 0
@@ -240,6 +272,13 @@ def run_loop(
                         f"source={event.source} "
                         f"reason={event.reason}"
                     )
+                    if gesture_controller is not None:
+                        control_result = gesture_controller.handle_event(event, now)
+                        print(
+                            "[pi5-inference] "
+                            f"control executed={control_result.executed} "
+                            f"reason={control_result.reason}"
+                        )
 
         if max_frames is not None and total_frames >= max_frames:
             return 0
