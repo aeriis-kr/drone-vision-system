@@ -56,6 +56,13 @@ def build_parser() -> argparse.ArgumentParser:
         dest="show_fps",
         default=defaults.show_fps,
     )
+    parser.add_argument(
+        "--no-overlay",
+        action="store_false",
+        dest="render_detections",
+        default=defaults.render_detections,
+        help="run YOLO but display the clean decoded frame without detection boxes",
+    )
     return parser
 
 
@@ -85,12 +92,13 @@ def main() -> int:
         display=args.display,
         inference=args.inference,
         show_fps=args.show_fps,
+        render_detections=args.render_detections,
     )
 
     print(
         f"[vision-rx] platform={backend.name} stream={config.stream_format} "
         f"bind={config.bind_host}:{config.port} resolution={config.width}x{config.height} "
-        f"device={selected_device} inference={config.inference} display={config.display}"
+        f"device={selected_device} inference={config.inference} overlay={config.render_detections} display={config.display}"
     )
 
     detector = yolo_module.YoloDetector(
@@ -104,7 +112,7 @@ def main() -> int:
 
     try:
         with receiver_module.FFmpegUDPReceiver(config) as receiver:
-            return run_loop(receiver, detector, display, config.show_fps)
+            return run_loop(receiver, detector, display, config.show_fps, config.render_detections)
     except (receiver_module.ReceiverError, yolo_module.InferenceError, RuntimeError) as exc:
         print(f"[vision-rx] error: {exc}")
         return 1
@@ -130,7 +138,7 @@ def build_display(name: str) -> Any:
     raise ValueError(f"unsupported display backend: {name}")
 
 
-def run_loop(receiver: Any, detector: Any, display: Any, show_fps: bool) -> int:
+def run_loop(receiver: Any, detector: Any, display: Any, show_fps: bool, render_detections: bool) -> int:
     last_report = time.monotonic()
     frame_count = 0
     fps = 0.0
@@ -145,7 +153,8 @@ def run_loop(receiver: Any, detector: Any, display: Any, show_fps: bool) -> int:
             last_report = now
             print(f"[vision-rx] fps={fps:.1f}")
 
-        output = detector.process(frame)
+        result = detector.detect(frame)
+        output = detector.render(result.frame, result.detections) if render_detections else result.frame
         if show_fps:
             output = draw_fps(output, fps)
         if not display.show(output):

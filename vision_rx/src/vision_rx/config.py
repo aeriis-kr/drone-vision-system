@@ -22,6 +22,7 @@ class ReceiverConfig:
     display: str = "opencv"
     inference: bool = True
     show_fps: bool = True
+    render_detections: bool = True
 
     @property
     def frame_bytes(self) -> int:
@@ -46,6 +47,7 @@ class ReceiverConfig:
             display=os.getenv("DVS_DISPLAY") or os.getenv("RX_DISPLAY") or "opencv",
             inference=not _truthy(os.getenv("DVS_NO_INFERENCE") or os.getenv("NO_INFERENCE")),
             show_fps=not _truthy(os.getenv("DVS_NO_FPS") or os.getenv("NO_FPS")),
+            render_detections=not _truthy(os.getenv("DVS_NO_OVERLAY") or os.getenv("NO_OVERLAY")),
         )
 
 

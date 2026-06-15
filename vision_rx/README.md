@@ -56,6 +56,17 @@ Decode/display without YOLO:
 NO_INFERENCE=1 make run-rx
 ```
 
+Run YOLO while displaying the clean video stream without detection boxes:
+
+```bash
+NO_OVERLAY=1 make run-rx
+```
+
+Inference code now exposes structured detections through
+`vision_rx.inference.YoloDetector.detect()`. Pose landmark gesture helpers are
+available under `vision_rx.motion` for the future Pi-side
+`landmarks -> gesture -> TriggerEvent` path. Rendering can stay disabled.
+
 If the transmitter uses RTP instead of UDP MPEG-TS, set both sides to RTP:
 
 ```bash

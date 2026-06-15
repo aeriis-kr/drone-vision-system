@@ -18,6 +18,7 @@ DEVICE="${DEVICE:-${DVS_DEVICE:-auto}}"
 RX_DISPLAY="${RX_DISPLAY:-${DVS_DISPLAY:-opencv}}"
 NO_INFERENCE="${NO_INFERENCE:-${DVS_NO_INFERENCE:-0}}"
 NO_FPS="${NO_FPS:-${DVS_NO_FPS:-0}}"
+NO_OVERLAY="${NO_OVERLAY:-${DVS_NO_OVERLAY:-0}}"
 
 args=(
 	--bind-host "$BIND_HOST"
@@ -38,6 +39,9 @@ if [[ "$NO_INFERENCE" == "1" || "$NO_INFERENCE" == "true" ]]; then
 fi
 if [[ "$NO_FPS" == "1" || "$NO_FPS" == "true" ]]; then
 	args+=(--no-fps)
+fi
+if [[ "$NO_OVERLAY" == "1" || "$NO_OVERLAY" == "true" ]]; then
+	args+=(--no-overlay)
 fi
 
 list_non_loopback_ipv4() {

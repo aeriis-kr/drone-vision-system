@@ -20,6 +20,7 @@ DEVICE ?= auto
 RX_DISPLAY ?= opencv
 NO_INFERENCE ?= 0
 NO_FPS ?= 0
+NO_OVERLAY ?= 0
 
 .PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pi stream-to-rx dry-run-pi check lock clean distclean doctor
 
@@ -38,7 +39,7 @@ help:
 	@printf '%s\n' ''
 	@printf '%s\n' 'Common overrides:'
 	@printf '%s\n' '  STREAM_PORT=5000 WIDTH=1280 HEIGHT=720 FPS=30 BITRATE=3000000'
-	@printf '%s\n' '  STREAM_FORMAT=mpegts|rtp MODEL=yolo11n.pt DEVICE=auto RX_DISPLAY=opencv|none'
+	@printf '%s\n' '  STREAM_FORMAT=mpegts|rtp MODEL=yolo11n.pt DEVICE=auto RX_DISPLAY=opencv|none NO_OVERLAY=1'
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> STREAM_PORT=5000 STREAM_FORMAT=mpegts|rtp'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Validation/maintenance:'
@@ -72,7 +73,7 @@ dry-run-pi:
 	STREAM_HOST="192.0.2.1" STREAM_PORT="$(STREAM_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" bash scripts/run-pi.sh --dry-run
 
 run-rx:
-	BIND_HOST="$(BIND_HOST)" STREAM_PORT="$(STREAM_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" RX_DISPLAY="$(RX_DISPLAY)" NO_INFERENCE="$(NO_INFERENCE)" NO_FPS="$(NO_FPS)" bash scripts/run-rx.sh
+	BIND_HOST="$(BIND_HOST)" STREAM_PORT="$(STREAM_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" RX_DISPLAY="$(RX_DISPLAY)" NO_INFERENCE="$(NO_INFERENCE)" NO_FPS="$(NO_FPS)" NO_OVERLAY="$(NO_OVERLAY)" bash scripts/run-rx.sh
 
 check:
 	python3 -m compileall -q pi5_tx/src vision_rx/src pi5_tx/main.py vision_rx/main.py
