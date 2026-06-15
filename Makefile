@@ -4,15 +4,6 @@ SHELL := /usr/bin/env bash
 PYTHON_BIN ?= python3
 APT_UPGRADE ?= 1
 INSTALL_SYSTEM_DEPS ?= 1
-CONFIGURE_AP ?= 1
-WIFI_COUNTRY ?= KR
-AP_IFACE ?=
-AP_SSID ?=
-AP_PSK ?=
-AP_CIDR ?= 10.42.0.1/24
-AP_BAND ?= bg
-AP_CHANNEL ?= 6
-AP_CONFIRM ?=
 
 STREAM_HOST ?=
 BIND_HOST ?= 0.0.0.0
@@ -30,15 +21,14 @@ RX_DISPLAY ?= opencv
 NO_INFERENCE ?= 0
 NO_FPS ?= 0
 
-.PHONY: help setup setup-rx setup-pi setup-pi-deps install install-rx install-pi run-rx run-pi stream-to-rx dry-run-pi check lock clean distclean doctor
+.PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pi stream-to-rx dry-run-pi check lock clean distclean doctor
 
 help:
 	@printf '%s\n' 'Drone Vision System project targets'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Setup:'
 	@printf '%s\n' '  make setup-rx        Install receiver system deps + uv deps on this machine'
-	@printf '%s\n' '  make setup-pi        Raspberry Pi 5 deps + randomized Wi-Fi AP setup'
-	@printf '%s\n' '  make setup-pi-deps   Raspberry Pi 5 deps only, without AP setup'
+	@printf '%s\n' '  make setup-pi        Raspberry Pi 5 system deps + uv deps'
 	@printf '%s\n' '  make install         uv sync both packages without apt/brew installs'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Run:'
@@ -49,7 +39,7 @@ help:
 	@printf '%s\n' 'Common overrides:'
 	@printf '%s\n' '  STREAM_PORT=5000 WIDTH=1280 HEIGHT=720 FPS=30 BITRATE=3000000'
 	@printf '%s\n' '  STREAM_FORMAT=mpegts|rtp MODEL=yolo11n.pt DEVICE=auto RX_DISPLAY=opencv|none'
-	@printf '%s\n' '  WIFI_COUNTRY=KR AP_SSID=<optional> AP_PSK=<optional> CONFIGURE_AP=1 AP_CONFIRM=1'
+	@printf '%s\n' '  STREAM_HOST=<receiver-ip> STREAM_PORT=5000 STREAM_FORMAT=mpegts|rtp'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Validation/maintenance:'
 	@printf '%s\n' '  make check           Compile Python sources and validate TOML'
@@ -63,10 +53,7 @@ setup-rx:
 	PYTHON_BIN="$(PYTHON_BIN)" INSTALL_SYSTEM_DEPS="$(INSTALL_SYSTEM_DEPS)" bash scripts/setup-rx.sh
 
 setup-pi:
-	PYTHON_BIN="$(PYTHON_BIN)" APT_UPGRADE="$(APT_UPGRADE)" CONFIGURE_AP="$(CONFIGURE_AP)" WIFI_COUNTRY="$(WIFI_COUNTRY)" AP_IFACE="$(AP_IFACE)" AP_SSID="$(AP_SSID)" AP_PSK="$(AP_PSK)" AP_CIDR="$(AP_CIDR)" AP_BAND="$(AP_BAND)" AP_CHANNEL="$(AP_CHANNEL)" AP_CONFIRM="$(AP_CONFIRM)" bash scripts/setup-pi.sh
-
-setup-pi-deps:
-	PYTHON_BIN="$(PYTHON_BIN)" APT_UPGRADE="$(APT_UPGRADE)" CONFIGURE_AP=0 bash scripts/setup-pi.sh
+	PYTHON_BIN="$(PYTHON_BIN)" APT_UPGRADE="$(APT_UPGRADE)" bash scripts/setup-pi.sh
 
 install: install-pi install-rx
 

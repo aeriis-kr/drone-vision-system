@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Convenience wrapper for classroom use:
-#   scripts/stream-to-rx.sh 10.42.0.123
+#   scripts/stream-to-rx.sh <receiver-ip>
 # is equivalent to:
-#   STREAM_HOST=10.42.0.123 scripts/run-pi.sh
+#   STREAM_HOST=<receiver-ip> scripts/run-pi.sh
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 

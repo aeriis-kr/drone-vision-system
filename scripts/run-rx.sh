@@ -65,7 +65,7 @@ print_pi_stream_commands() {
 	cat <<EOF
 
 [run-rx] Receiver is about to listen on UDP/RTP port $STREAM_PORT.
-[run-rx] Connect this receiver to the Raspberry Pi AP first.
+[run-rx] Connect this receiver to the same preconfigured AP/network as the Raspberry Pi first.
 
 [run-rx] Non-loopback IPv4 addresses on this receiver:
 EOF
@@ -81,7 +81,7 @@ EOF
 		cat <<EOF
   - none found yet
 
-[run-rx] No receiver IP was detected. Connect to the Pi AP and run make run-rx again.
+[run-rx] No receiver IP was detected. Connect to the preconfigured AP/network and run make run-rx again.
 EOF
 		return
 	fi
@@ -89,7 +89,6 @@ EOF
 	cat <<EOF
 
 [run-rx] On the Raspberry Pi repository root, run the command that uses the receiver IP above.
-[run-rx] Usually the Pi AP assigns receiver addresses in the 10.42.0.0/24 range.
 EOF
 
 	while read -r _iface ip; do

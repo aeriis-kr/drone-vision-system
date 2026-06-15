@@ -21,11 +21,11 @@ if [[ -z "$STREAM_HOST" ]]; then
 	cat >&2 <<EOF
 [run-pi] receiver IP is required.
 
-On the receiver laptop, connect to the Pi AP and run:
+Connect the Pi and receiver to the same preconfigured AP/network, then run on the receiver:
   make run-rx
 
 The receiver terminal will print the exact command to run here, for example:
-  STREAM_HOST=10.42.0.123 make run-pi
+  STREAM_HOST=<receiver-ip> make run-pi
 EOF
 	exit 2
 fi

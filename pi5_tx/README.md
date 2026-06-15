@@ -21,19 +21,12 @@ make setup-pi
 The setup target:
 
 - updates/upgrades apt packages,
-- installs camera, FFmpeg, NetworkManager, Python and uv dependencies,
-- creates `uv venv --system-site-packages`,
-- asks for explicit confirmation before switching Wi-Fi into AP mode,
-- configures a Wi-Fi AP with a randomized SSID,
-- uses the SSID suffix twice as the default WPA key, for example `DVS-8K2Q7A` -> `8K2Q7A8K2Q7A`,
-- prints the SSID/WPA key/Pi AP IP for the receiver user.
+- installs camera, FFmpeg, Python and uv dependencies,
+- creates `uv venv --system-site-packages`.
 
-Skip AP setup or intentionally bypass the interactive AP prompt if needed:
-
-```bash
-CONFIGURE_AP=0 make setup-pi
-AP_CONFIRM=1 make setup-pi
-```
+It does not configure Wi-Fi AP mode, SSIDs/passwords, or static IP addresses.
+The Pi image is expected to contain the classroom AP/network connection before
+this script runs.
 
 ## Stream to receiver
 
@@ -41,19 +34,19 @@ The receiver prints the exact command to run on the Pi when `make run-rx` starts
 It looks like this:
 
 ```bash
-STREAM_HOST=10.42.0.123 make run-pi
+STREAM_HOST=<receiver-ip> make run-pi
 ```
 
 You can also call the convenience wrapper directly:
 
 ```bash
-scripts/stream-to-rx.sh 10.42.0.123
+scripts/stream-to-rx.sh <receiver-ip>
 ```
 
 Useful overrides:
 
 ```bash
-STREAM_HOST=10.42.0.123 STREAM_PORT=5000 WIDTH=1280 HEIGHT=720 FPS=30 BITRATE=3000000 make run-pi
+STREAM_HOST=<receiver-ip> STREAM_PORT=5000 WIDTH=1280 HEIGHT=720 FPS=30 BITRATE=3000000 make run-pi
 ```
 
 For command preview without running hardware:

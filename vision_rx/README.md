@@ -27,8 +27,8 @@ dependencies in a `uv venv --system-site-packages` environment.
 
 ## Classroom run flow
 
-1. Connect this receiver machine manually to the Raspberry Pi AP printed by
-   `make setup-pi` on the Pi.
+1. Connect this receiver machine manually to the same preconfigured AP/network
+   as the Raspberry Pi.
 2. Start the receiver:
 
    ```bash
@@ -39,10 +39,10 @@ dependencies in a `uv venv --system-site-packages` environment.
    example:
 
    ```bash
-   STREAM_HOST=10.42.0.123 STREAM_PORT=5000 WIDTH=1280 HEIGHT=720 FPS=30 BITRATE=3000000 STREAM_FORMAT=mpegts make run-pi
+   STREAM_HOST=<receiver-ip> STREAM_PORT=5000 WIDTH=1280 HEIGHT=720 FPS=30 BITRATE=3000000 STREAM_FORMAT=mpegts make run-pi
    ```
 
-4. Run the command with the AP-side IP address on the Raspberry Pi.
+4. Run the command with the receiver IP address on the Raspberry Pi.
 
 Useful overrides:
 
