@@ -63,19 +63,27 @@ Start the receiver in monitor-only mode so it displays clean video without local
 NO_INFERENCE=1 NO_OVERLAY=1 make run-rx
 ```
 
-Then run the Pi-local inference stream from the Pi:
+Then run the Pi-local object inference stream from the Pi:
 
 ```bash
 STREAM_HOST=<receiver-ip> make run-inference-pi
 ```
 
-This command uses one Pi camera owner, streams clean H264 video to the receiver, and decodes the same stream to local BGR frames on the Pi for YOLO inference.
-It logs detections only. It does not create `TriggerEvent`, call MAVLink, or command Pixhawk.
+Use pose inference explicitly when you want the pose model instead of the default object detector:
+
+```bash
+STREAM_HOST=<receiver-ip> make run-pose-inference-pi
+```
+
+The default command uses `yolo11n.pt`. The pose command uses `yolo11n-pose.pt`.
+Both commands use one Pi camera owner, stream clean H264 video to the receiver, and decode the same stream to local BGR frames on the Pi for YOLO inference.
+They log detections only. They do not create `TriggerEvent`, call MAVLink, or command Pixhawk.
 
 For command preview without running hardware:
 
 ```bash
 make dry-run-inference-pi
+make dry-run-pose-inference-pi
 ```
 
 ## Pixhawk takeover smoke test

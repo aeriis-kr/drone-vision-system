@@ -18,6 +18,14 @@ IMGSZ="${IMGSZ:-${DVS_IMGSZ:-640}}"
 DEVICE="${DEVICE:-${DVS_DEVICE:-auto}}"
 NO_INFERENCE="${NO_INFERENCE:-${DVS_NO_INFERENCE:-0}}"
 INFERENCE_MAX_FRAMES="${INFERENCE_MAX_FRAMES:-${DVS_INFERENCE_MAX_FRAMES:-}}"
+DISPLAY_MODEL="$MODEL"
+
+for arg in "$@"; do
+	if [[ "$arg" == "--pose" ]]; then
+		DISPLAY_MODEL="yolo11n-pose.pt"
+		break
+	fi
+done
 
 if [[ -z "$STREAM_HOST" && $# -gt 0 && "$1" != -* ]]; then
 	STREAM_HOST="$1"
@@ -66,7 +74,7 @@ if [[ -n "$INFERENCE_MAX_FRAMES" ]]; then
 fi
 
 printf '[run-inference-pi] streaming with local inference to %s:%s (%sx%s@%sfps, bitrate=%s, format=%s, model=%s, device=%s)\n' \
-	"$STREAM_HOST" "$STREAM_PORT" "$WIDTH" "$HEIGHT" "$FPS" "$BITRATE" "$STREAM_FORMAT" "$MODEL" "$DEVICE"
+	"$STREAM_HOST" "$STREAM_PORT" "$WIDTH" "$HEIGHT" "$FPS" "$BITRATE" "$STREAM_FORMAT" "$DISPLAY_MODEL" "$DEVICE"
 
 cd "$PI_DIR"
 exec uv run pi5-inference "${args[@]}" "$@"

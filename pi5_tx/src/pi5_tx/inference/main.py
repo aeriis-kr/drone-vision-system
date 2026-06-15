@@ -45,6 +45,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--preview", action="store_true", default=stream_defaults.preview)
     parser.add_argument("--dry-run", action="store_true", default=stream_defaults.dry_run)
     parser.add_argument("--model", default=inference_defaults.model)
+    parser.add_argument(
+        "--pose",
+        action="store_true",
+        help="use the default YOLO pose model (yolo11n-pose.pt)",
+    )
     parser.add_argument("--conf", type=float, default=inference_defaults.confidence)
     parser.add_argument("--imgsz", type=int, default=inference_defaults.imgsz)
     parser.add_argument("--device", default=inference_defaults.device)
@@ -71,8 +76,9 @@ def main() -> int:
         preview=args.preview,
         dry_run=args.dry_run,
     )
+    model_name = "yolo11n-pose.pt" if args.pose else args.model
     inference_config = PiInferenceConfig(
-        model=args.model,
+        model=model_name,
         confidence=args.conf,
         imgsz=args.imgsz,
         device=args.device,
@@ -86,6 +92,7 @@ def main() -> int:
         f"stream={stream_config.stream_format} "
         f"target={stream_config.host}:{stream_config.port} "
         f"resolution={stream_config.width}x{stream_config.height} "
+        f"model={inference_config.model} "
         f"device={selected_device} "
         f"inference={inference_config.enabled}"
     )
