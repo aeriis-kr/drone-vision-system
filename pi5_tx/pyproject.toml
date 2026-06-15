@@ -4,10 +4,11 @@ version = "0.1.0"
 description = "Raspberry Pi 5 camera H264 UDP/RTP transmitter for Drone Vision System"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["pymavlink>=2.4"]
 
 [project.scripts]
 pi5-tx = "pi5_tx.main:main"
+pi5-takeover-test = "pi5_tx.automation.takeover_test:main"
 
 [build-system]
 requires = ["hatchling"]

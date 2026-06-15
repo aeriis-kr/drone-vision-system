@@ -8,7 +8,7 @@ Responsibilities are intentionally narrow:
 2. Encode H264 with the Raspberry Pi hardware encoder.
 3. Stream the compressed video to a receiver over UDP MPEG-TS or RTP.
 
-No YOLO, OpenCV, or inference code belongs in this package.
+The default transmitter remains stream-only; automation modules are inert unless an explicit automation/test command is run.
 
 ## Setup on Raspberry Pi 5
 
@@ -54,3 +54,13 @@ For command preview without running hardware:
 ```bash
 make dry-run-pi
 ```
+
+## Pixhawk takeover smoke test
+
+```bash
+MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make takeover-test-pi
+```
+
+This performs a manual LOITER -> GUIDED -> LOITER smoke test with an optional
+STABILIZE return. It sends no movement setpoints. Run it only with props removed
+or in a safe bench/SITL setup.

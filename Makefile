@@ -13,6 +13,8 @@ HEIGHT ?= 720
 FPS ?= 30
 BITRATE ?= 3000000
 STREAM_FORMAT ?= mpegts
+MAVLINK_DEVICE ?= /dev/serial0
+MAVLINK_BAUD ?= 57600
 MODEL ?= yolo11n.pt
 CONF ?= 0.25
 IMGSZ ?= 640
@@ -22,7 +24,7 @@ NO_INFERENCE ?= 0
 NO_FPS ?= 0
 NO_OVERLAY ?= 0
 
-.PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pi stream-to-rx dry-run-pi check lock clean distclean doctor
+.PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pi stream-to-rx dry-run-pi takeover-test-pi check lock clean distclean doctor
 
 help:
 	@printf '%s\n' 'Drone Vision System project targets'
@@ -36,6 +38,7 @@ help:
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-pi'
 	@printf '%s\n' '  scripts/stream-to-rx.sh <receiver-ip>'
 	@printf '%s\n' '  make run-rx'
+	@printf '%s\n' '  make takeover-test-pi  Manual LOITER->GUIDED->LOITER Pixhawk smoke test'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Common overrides:'
 	@printf '%s\n' '  STREAM_PORT=5000 WIDTH=1280 HEIGHT=720 FPS=30 BITRATE=3000000'
@@ -71,6 +74,9 @@ stream-to-rx: run-pi
 
 dry-run-pi:
 	STREAM_HOST="192.0.2.1" STREAM_PORT="$(STREAM_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" bash scripts/run-pi.sh --dry-run
+
+takeover-test-pi:
+	MAVLINK_DEVICE="$(MAVLINK_DEVICE)" MAVLINK_BAUD="$(MAVLINK_BAUD)" bash scripts/takeover-test-pi.sh
 
 run-rx:
 	BIND_HOST="$(BIND_HOST)" STREAM_PORT="$(STREAM_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" RX_DISPLAY="$(RX_DISPLAY)" NO_INFERENCE="$(NO_INFERENCE)" NO_FPS="$(NO_FPS)" NO_OVERLAY="$(NO_OVERLAY)" bash scripts/run-rx.sh
