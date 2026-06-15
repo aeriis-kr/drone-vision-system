@@ -73,7 +73,12 @@ class PixhawkConnection:
         timeout_s: float = 15.0,
     ) -> "PixhawkConnection":
         mavutil = _mavutil()
-        master = mavutil.mavlink_connection(device, baud=baud)
+        try:
+            master = mavutil.mavlink_connection(device, baud=baud)
+        except OSError as exc:
+            raise RuntimeError(
+                f"Unable to connect to MAVLink device {device}: {exc}"
+            ) from exc
         connection = cls(master)
         connection.target = connection.wait_target(timeout_s=timeout_s)
         return connection
@@ -257,6 +262,7 @@ class PixhawkConnection:
         last_auto_action_s: float | None,
         pilot_stick_deadband_pwm: int,
         timeout_s: float = 2.0,
+        require_health_messages: bool = False,
     ) -> VehicleState:
         mavutil = _mavutil()
         target = self._require_target()
@@ -267,6 +273,12 @@ class PixhawkConnection:
         ekf_ok = True
         battery_ok = True
         pilot_stick_idle = True
+        seen_mode = False
+        seen_altitude = False
+        seen_gps = False
+        seen_ekf = False
+        seen_battery = False
+        seen_rc = False
 
         deadline = time.monotonic() + timeout_s
         while time.monotonic() < deadline:
@@ -292,31 +304,47 @@ class PixhawkConnection:
             if msg.get_srcSystem() != target.system:
                 continue
             if msg_type == "HEARTBEAT":
+                seen_mode = True
                 mode = mavutil.mode_string_v10(msg)
                 armed = bool(
                     msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED
                 )
             elif msg_type == "GLOBAL_POSITION_INT":
+                seen_altitude = True
                 altitude_m = msg.relative_alt / 1000.0
             elif msg_type == "GPS_RAW_INT":
+                seen_gps = True
                 gps_ok = msg.fix_type >= 3
             elif msg_type == "SYS_STATUS" and msg.battery_remaining >= 0:
+                seen_battery = True
                 battery_ok = msg.battery_remaining > 15
             elif msg_type == "EKF_STATUS_REPORT":
+                seen_ekf = True
                 ekf_ok = bool(msg.flags)
             elif msg_type == "RC_CHANNELS":
+                seen_rc = True
                 pilot_stick_idle = _rc_sticks_idle(msg, pilot_stick_deadband_pwm)
-            if mode is not None and altitude_m is not None:
+            if not require_health_messages and seen_mode and seen_altitude:
+                break
+            if (
+                require_health_messages
+                and seen_mode
+                and seen_altitude
+                and seen_gps
+                and seen_ekf
+                and seen_battery
+                and seen_rc
+            ):
                 break
 
         return VehicleState(
             mode=mode,
             armed=armed,
             altitude_m=altitude_m,
-            ekf_ok=ekf_ok,
-            gps_ok=gps_ok,
-            battery_ok=battery_ok,
-            pilot_stick_idle=pilot_stick_idle,
+            ekf_ok=ekf_ok if seen_ekf or not require_health_messages else False,
+            gps_ok=gps_ok if seen_gps or not require_health_messages else False,
+            battery_ok=battery_ok if seen_battery or not require_health_messages else False,
+            pilot_stick_idle=pilot_stick_idle if seen_rc or not require_health_messages else False,
             automation_enabled=automation_enabled,
             last_auto_action_s=last_auto_action_s,
         )

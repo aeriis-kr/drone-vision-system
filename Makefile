@@ -34,7 +34,7 @@ SITL_QGC_HOST ?= 127.0.0.1
 SITL_QGC_PORT ?= 14550
 MAVLINK_SITL_DEVICE ?= udpin:127.0.0.1:$(SITL_SMOKE_PORT)
 
-.PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pi run-inference-pi run-pose-inference-pi run-pose-control-sitl-pi stream-to-rx dry-run-pi dry-run-inference-pi dry-run-pose-inference-pi takeover-test-pi build-sitl run-sitl sitl-smoke-test-pi sitl-gesture-control-test-pi check lock clean distclean doctor
+.PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pi run-inference-pi run-pose-inference-pi run-pose-control-sitl-pi stream-to-rx dry-run-pi dry-run-inference-pi dry-run-pose-inference-pi pixhawk-bench-gate-test-pi takeover-test-pi build-sitl run-sitl sitl-smoke-test-pi sitl-gesture-control-test-pi check lock clean distclean doctor
 
 help:
 	@printf '%s\n' 'Drone Vision System project targets'
@@ -51,6 +51,7 @@ help:
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-pose-control-sitl-pi  SITL-only: stable pose gestures command altitude via MAVLink'
 	@printf '%s\n' '  scripts/stream-to-rx.sh <receiver-ip>'
 	@printf '%s\n' '  make run-rx'
+	@printf '%s\n' '  make pixhawk-bench-gate-test-pi  Read-only Pixhawk UART gate check for injected UP/DOWN triggers'
 	@printf '%s\n' '  make takeover-test-pi  Manual LOITER->GUIDED->LOITER Pixhawk smoke test'
 	@printf '%s\n' '  make build-sitl       Build ArduPilot SITL image with podman/docker'
 	@printf '%s\n' '  make run-sitl         Run ArduCopter SITL; default host network sends UDP to QGC 14550'
@@ -107,6 +108,9 @@ dry-run-inference-pi:
 
 dry-run-pose-inference-pi:
 	STREAM_HOST="192.0.2.1" STREAM_PORT="$(STREAM_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" bash scripts/run-inference-pi.sh --dry-run --pose
+
+pixhawk-bench-gate-test-pi:
+	MAVLINK_DEVICE="$(MAVLINK_DEVICE)" MAVLINK_BAUD="$(MAVLINK_BAUD)" bash scripts/pixhawk-bench-gate-test-pi.sh
 
 takeover-test-pi:
 	MAVLINK_DEVICE="$(MAVLINK_DEVICE)" MAVLINK_BAUD="$(MAVLINK_BAUD)" bash scripts/takeover-test-pi.sh

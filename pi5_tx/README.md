@@ -122,6 +122,22 @@ STREAM_HOST=<receiver-ip> make run-pose-control-sitl-pi
 
 This path still uses the SITL UDP listener on `127.0.0.1:14551`; it is not the UART/Pixhawk hardware path.
 
+## Pixhawk UART bench gate test
+
+```bash
+MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make pixhawk-bench-gate-test-pi
+```
+
+This connects to Pixhawk over UART, reads the current vehicle state, injects stable UP and DOWN trigger events in software, evaluates the same automation gate used by SITL control, and prints whether each direction would be allowed plus the target altitude. It does not arm, change modes, take off, land, or send position/altitude setpoints. Exit code is 0 only when every requested direction passes the gate; a blocked gate prints the reason and exits 1.
+
+Useful pass-through examples:
+
+```bash
+scripts/pixhawk-bench-gate-test-pi.sh --direction UP
+scripts/pixhawk-bench-gate-test-pi.sh --direction DOWN --last-auto-action-age-s 1
+scripts/pixhawk-bench-gate-test-pi.sh --automation-disabled
+```
+
 ## Pixhawk takeover smoke test
 
 ```bash
