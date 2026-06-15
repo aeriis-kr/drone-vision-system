@@ -100,6 +100,8 @@ class PiInferencePipeline:
             "-map",
             "0:v:0",
             "-an",
+            "-vf",
+            f"setpts=N/({self.stream_config.fps}*TB)",
             "-pix_fmt",
             "bgr24",
             "-f",
