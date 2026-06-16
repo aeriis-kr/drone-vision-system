@@ -32,6 +32,18 @@ is_truthy() {
 	return 1
 }
 
+if [[ "$STREAM_FORMAT" == "rtp" ]] && ! is_truthy "$NO_METADATA"; then
+	if [[ "$STREAM_PORT" =~ ^[0-9]+$ && "$METADATA_PORT" =~ ^[0-9]+$ ]]; then
+		RTP_RTCP_PORT=$((STREAM_PORT + 1))
+		if [[ "$METADATA_PORT" == "$STREAM_PORT" || "$METADATA_PORT" == "$RTP_RTCP_PORT" ]]; then
+			METADATA_PORT=$((STREAM_PORT + 2))
+			printf '[run-rx] RTP reserves UDP ports %s-%s; using METADATA_PORT=%s.\n' \
+				"$STREAM_PORT" "$RTP_RTCP_PORT" "$METADATA_PORT" >&2
+		fi
+	fi
+fi
+
+
 
 args=(
 	--bind-host "$BIND_HOST"
@@ -117,10 +129,10 @@ EOF
 		[[ -n "${ip:-}" ]] || continue
 		printf '  STREAM_HOST=%s STREAM_PORT=%s WIDTH=%s HEIGHT=%s FPS=%s BITRATE=%s STREAM_FORMAT=%s make run-pi\n' \
 			"$ip" "$STREAM_PORT" "$WIDTH" "$HEIGHT" "$FPS" "$BITRATE" "$STREAM_FORMAT"
-		printf '  STREAM_HOST=%s STREAM_PORT=%s METADATA_PORT=%s make run-pose-inference-pi\n' \
-			"$ip" "$STREAM_PORT" "$METADATA_PORT"
-		printf '  STREAM_HOST=%s STREAM_PORT=%s METADATA_PORT=%s MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make run-pose-control-pi\n' \
-			"$ip" "$STREAM_PORT" "$METADATA_PORT"
+		printf '  STREAM_HOST=%s STREAM_PORT=%s METADATA_PORT=%s WIDTH=%s HEIGHT=%s FPS=%s BITRATE=%s STREAM_FORMAT=%s MODEL=%s CONF=%s IMGSZ=%s DEVICE=%s make run-pose-inference-pi\n' \
+			"$ip" "$STREAM_PORT" "$METADATA_PORT" "$WIDTH" "$HEIGHT" "$FPS" "$BITRATE" "$STREAM_FORMAT" "$MODEL" "$CONF" "$IMGSZ" "$DEVICE"
+		printf '  STREAM_HOST=%s STREAM_PORT=%s METADATA_PORT=%s WIDTH=%s HEIGHT=%s FPS=%s BITRATE=%s STREAM_FORMAT=%s MODEL=%s CONF=%s IMGSZ=%s DEVICE=%s MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make run-pose-control-pi\n' \
+			"$ip" "$STREAM_PORT" "$METADATA_PORT" "$WIDTH" "$HEIGHT" "$FPS" "$BITRATE" "$STREAM_FORMAT" "$MODEL" "$CONF" "$IMGSZ" "$DEVICE"
 	done <<<"$rows"
 
 	cat <<EOF
