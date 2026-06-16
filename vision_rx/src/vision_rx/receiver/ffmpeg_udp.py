@@ -108,6 +108,9 @@ class FFmpegUDPReceiver:
                 self._sdp_path = None
 
     def build_command(self) -> list[str]:
+        is_rtp = self.config.stream_format == "rtp"
+        probe_size = "4194304" if is_rtp else "1048576"
+        analyze_duration = "30000000" if is_rtp else "1000000"
         common = [
             self.config.ffmpeg_path,
             "-hide_banner",
@@ -118,9 +121,9 @@ class FFmpegUDPReceiver:
             "-flags",
             "low_delay",
             "-probesize",
-            "1048576",
+            probe_size,
             "-analyzeduration",
-            "1000000",
+            analyze_duration,
         ]
         if self.config.stream_format == "rtp":
             common.extend(["-protocol_whitelist", "file,udp,rtp", "-i", str(self._write_sdp())])
@@ -162,6 +165,7 @@ t=0 0
 m=video {self.config.port} RTP/AVP 96
 a=rtpmap:96 H264/90000
 a=fmtp:96 packetization-mode=1
+a=framesize:96 {self.config.width}-{self.config.height}
 """
         handle = tempfile.NamedTemporaryFile(
             mode="w", prefix="dvs-", suffix=".sdp", delete=False, encoding="utf-8"
