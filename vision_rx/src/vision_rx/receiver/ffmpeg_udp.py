@@ -132,9 +132,9 @@ class FFmpegUDPReceiver:
         common.extend(
             [
                 "-vf",
-                f"scale={self.config.width}:{self.config.height}",
+                f"scale={self.config.width}:{self.config.height},setpts=N/({self.config.fps}*TB)",
                 "-fps_mode",
-                "passthrough",
+                "cfr",
                 "-pix_fmt",
                 "bgr24",
                 "-f",
