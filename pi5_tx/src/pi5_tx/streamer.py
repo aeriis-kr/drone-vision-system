@@ -65,6 +65,8 @@ class RaspberryPiH264Streamer:
         )
         cmd = [
             camera_bin,
+            "--hflip",
+            "--vflip",
             "--timeout",
             "0",
             "--codec",
