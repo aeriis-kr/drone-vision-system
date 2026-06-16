@@ -72,7 +72,7 @@ make sitl-smoke-test-pi
 make sitl-gesture-control-test-pi
 STREAM_HOST=<receiver-ip> make run-pose-control-pi
 NO_INFERENCE=1 STREAM_HOST=<receiver-ip> make run-pose-control-pi
-CONTROL_HOST=<pi-ip> make run-pose-control-rx
+CONTROL_HOST=<pi-ip> CONTROL_RESPONSE_TIMEOUT_S=20 make run-pose-control-rx
 STREAM_HOST=<receiver-ip> make run-pose-control-sitl-pi
 NO_INFERENCE=1 make run-rx
 scripts/stream-to-rx.sh <receiver-ip>

@@ -125,6 +125,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--control-host", default=defaults.control_host, help="Pi host for TCP gesture control")
     parser.add_argument("--control-port", type=int, default=defaults.control_port)
     parser.add_argument("--control-timeout-s", type=float, default=defaults.control_timeout_s)
+    parser.add_argument(
+        "--control-response-timeout-s",
+        type=float,
+        default=defaults.control_response_timeout_s,
+        help="seconds to wait for Pi MAVLink gate/control result after TCP send",
+    )
     return parser
 
 
@@ -161,11 +167,14 @@ def main() -> int:
         control_host=args.control_host,
         control_port=args.control_port,
         control_timeout_s=args.control_timeout_s,
+        control_response_timeout_s=args.control_response_timeout_s,
     )
 
     metadata_status = f"metadata=:{config.metadata_port}" if config.metadata_enabled else "metadata=disabled"
     control_status = (
-        f"control=tcp://{config.control_host}:{config.control_port}"
+        f"control=tcp://{config.control_host}:{config.control_port} "
+        f"connect_timeout={config.control_timeout_s:.1f}s "
+        f"response_timeout={config.control_response_timeout_s:.1f}s"
         if config.control_host
         else "control=disabled"
     )
@@ -190,7 +199,8 @@ def main() -> int:
             RemoteControlClientConfig(
                 host=config.control_host,
                 port=config.control_port,
-                timeout_s=config.control_timeout_s,
+                connect_timeout_s=config.control_timeout_s,
+                response_timeout_s=config.control_response_timeout_s,
             )
         )
         if config.control_host

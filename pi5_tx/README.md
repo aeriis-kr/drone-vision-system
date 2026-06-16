@@ -93,10 +93,12 @@ NO_INFERENCE=1 STREAM_HOST=<receiver-ip> CONTROL_PORT=5002 make run-pose-control
 On the receiver, run pose inference locally and point control at the Pi:
 
 ```bash
-CONTROL_HOST=<pi-ip> CONTROL_PORT=5002 make run-pose-control-rx
+CONTROL_HOST=<pi-ip> CONTROL_PORT=5002 CONTROL_RESPONSE_TIMEOUT_S=20 make run-pose-control-rx
 ```
 
 The TCP path is only for sparse control triggers and replies. Video stays on UDP/RTP.
+
+`CONTROL_TIMEOUT_S` covers TCP connect/send. `CONTROL_RESPONSE_TIMEOUT_S` covers the Pi-side MAVLink gate/control result; keep it longer than the MAVLink action window so safety-gate denials return as `executed=False` instead of a receiver timeout.
 
 For command preview without running hardware:
 

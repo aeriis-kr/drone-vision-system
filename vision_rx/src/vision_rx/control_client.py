@@ -20,7 +20,8 @@ class RemoteControlError(RuntimeError):
 class RemoteControlClientConfig:
     host: str
     port: int = DEFAULT_CONTROL_PORT
-    timeout_s: float = 1.0
+    connect_timeout_s: float = 1.0
+    response_timeout_s: float = 20.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,17 +60,46 @@ class RemoteControlClient:
         request = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8") + b"\n"
 
         try:
-            with socket.create_connection(
+            sock = socket.create_connection(
                 (self.config.host, self.config.port),
-                timeout=self.config.timeout_s,
-            ) as sock:
-                sock.settimeout(self.config.timeout_s)
-                sock.sendall(request)
-                response = _recv_response(sock)
+                timeout=self.config.connect_timeout_s,
+            )
+        except socket.timeout as exc:
+            raise RemoteControlError(
+                f"remote control connect timed out: {self.config.host}:{self.config.port} "
+                f"after {self.config.connect_timeout_s:.1f}s"
+            ) from exc
         except OSError as exc:
             raise RemoteControlError(
-                f"remote control connect/send failed: {self.config.host}:{self.config.port}: {exc}"
+                f"remote control connect failed: {self.config.host}:{self.config.port}: {exc}"
             ) from exc
+
+        with sock:
+            try:
+                sock.settimeout(self.config.connect_timeout_s)
+                sock.sendall(request)
+            except socket.timeout as exc:
+                raise RemoteControlError(
+                    f"remote control send timed out: {self.config.host}:{self.config.port} "
+                    f"after {self.config.connect_timeout_s:.1f}s"
+                ) from exc
+            except OSError as exc:
+                raise RemoteControlError(
+                    f"remote control send failed: {self.config.host}:{self.config.port}: {exc}"
+                ) from exc
+
+            try:
+                sock.settimeout(self.config.response_timeout_s)
+                response = _recv_response(sock)
+            except socket.timeout as exc:
+                raise RemoteControlError(
+                    f"remote control response timed out: {self.config.host}:{self.config.port} "
+                    f"after {self.config.response_timeout_s:.1f}s; Pi may still be evaluating MAVLink gate/control"
+                ) from exc
+            except OSError as exc:
+                raise RemoteControlError(
+                    f"remote control receive failed: {self.config.host}:{self.config.port}: {exc}"
+                ) from exc
 
         return _parse_response(response)
 

@@ -29,6 +29,7 @@ class ReceiverConfig:
     control_host: str = ""
     control_port: int = 5002
     control_timeout_s: float = 1.0
+    control_response_timeout_s: float = 20.0
 
     @property
     def frame_bytes(self) -> int:
@@ -66,6 +67,11 @@ class ReceiverConfig:
             control_port=int(os.getenv("DVS_CONTROL_PORT") or os.getenv("CONTROL_PORT") or "5002"),
             control_timeout_s=float(
                 os.getenv("DVS_CONTROL_TIMEOUT_S") or os.getenv("CONTROL_TIMEOUT_S") or "1.0"
+            ),
+            control_response_timeout_s=float(
+                os.getenv("DVS_CONTROL_RESPONSE_TIMEOUT_S")
+                or os.getenv("CONTROL_RESPONSE_TIMEOUT_S")
+                or "20.0"
             ),
         )
 

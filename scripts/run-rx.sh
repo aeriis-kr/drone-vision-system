@@ -25,6 +25,7 @@ NO_METADATA="${NO_METADATA:-${DVS_NO_METADATA:-0}}"
 CONTROL_HOST="${CONTROL_HOST:-${DVS_CONTROL_HOST:-${RX_CONTROL_HOST:-}}}"
 CONTROL_PORT="${CONTROL_PORT:-${DVS_CONTROL_PORT:-5002}}"
 CONTROL_TIMEOUT_S="${CONTROL_TIMEOUT_S:-${DVS_CONTROL_TIMEOUT_S:-1.0}}"
+CONTROL_RESPONSE_TIMEOUT_S="${CONTROL_RESPONSE_TIMEOUT_S:-${DVS_CONTROL_RESPONSE_TIMEOUT_S:-20.0}}"
 
 is_truthy() {
 	case "$1" in
@@ -65,6 +66,7 @@ args=(
 	--control-host "$CONTROL_HOST"
 	--control-port "$CONTROL_PORT"
 	--control-timeout-s "$CONTROL_TIMEOUT_S"
+	--control-response-timeout-s "$CONTROL_RESPONSE_TIMEOUT_S"
 )
 
 if is_truthy "$NO_INFERENCE"; then
@@ -142,7 +144,7 @@ EOF
 	cat <<EOF
 
 [run-rx] For laptop-side pose control, restart this receiver with the Pi IP:
-  CONTROL_HOST=<pi-ip> CONTROL_PORT=$CONTROL_PORT make run-pose-control-rx
+  CONTROL_HOST=<pi-ip> CONTROL_PORT=$CONTROL_PORT CONTROL_RESPONSE_TIMEOUT_S=$CONTROL_RESPONSE_TIMEOUT_S make run-pose-control-rx
 
 [run-rx] Hardware pose control defaults to AUTO_DRY_RUN=1; add AUTO_DRY_RUN=0 only after UART bench gates pass and the vehicle is safe.
 
