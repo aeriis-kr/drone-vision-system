@@ -17,13 +17,19 @@ CONF="${CONF:-${DVS_CONF:-0.25}}"
 IMGSZ="${IMGSZ:-${DVS_IMGSZ:-640}}"
 DEVICE="${DEVICE:-${DVS_DEVICE:-auto}}"
 NO_INFERENCE="${NO_INFERENCE:-${DVS_NO_INFERENCE:-0}}"
+REMOTE_CONTROL="${REMOTE_CONTROL:-${DVS_REMOTE_CONTROL:-0}}"
+REMOTE_CONTROL_BIND_HOST="${REMOTE_CONTROL_BIND_HOST:-${DVS_REMOTE_CONTROL_BIND_HOST:-${CONTROL_BIND_HOST:-0.0.0.0}}}"
+REMOTE_CONTROL_PORT="${REMOTE_CONTROL_PORT:-${DVS_REMOTE_CONTROL_PORT:-${CONTROL_PORT:-5002}}}"
 INFERENCE_MAX_FRAMES="${INFERENCE_MAX_FRAMES:-${DVS_INFERENCE_MAX_FRAMES:-}}"
 DISPLAY_MODEL="$MODEL"
+HAS_MAVLINK_CONTROL=0
 
 for arg in "$@"; do
 	if [[ "$arg" == "--pose" ]]; then
 		DISPLAY_MODEL="yolo11n-pose.pt"
-		break
+	fi
+	if [[ "$arg" == "--mavlink-control" ]]; then
+		HAS_MAVLINK_CONTROL=1
 	fi
 done
 
@@ -80,6 +86,13 @@ args=(
 
 if is_truthy "$NO_INFERENCE"; then
 	args+=(--no-inference)
+	if [[ "$HAS_MAVLINK_CONTROL" == "1" ]] || is_truthy "$REMOTE_CONTROL"; then
+		args+=(
+			--remote-control-server
+			--remote-control-bind-host "$REMOTE_CONTROL_BIND_HOST"
+			--remote-control-port "$REMOTE_CONTROL_PORT"
+		)
+	fi
 fi
 if is_truthy "$NO_METADATA"; then
 	args+=(--no-metadata)
@@ -90,8 +103,8 @@ if [[ -n "$INFERENCE_MAX_FRAMES" ]]; then
 	args+=(--max-frames "$INFERENCE_MAX_FRAMES")
 fi
 
-printf '[run-inference-pi] streaming with local inference to %s:%s (%sx%s@%sfps, bitrate=%s, format=%s, model=%s, device=%s)\n' \
-	"$STREAM_HOST" "$STREAM_PORT" "$WIDTH" "$HEIGHT" "$FPS" "$BITRATE" "$STREAM_FORMAT" "$DISPLAY_MODEL" "$DEVICE"
+printf '[run-inference-pi] streaming to %s:%s (%sx%s@%sfps, bitrate=%s, format=%s, model=%s, device=%s, no_inference=%s, remote_control=%s:%s)\n' \
+	"$STREAM_HOST" "$STREAM_PORT" "$WIDTH" "$HEIGHT" "$FPS" "$BITRATE" "$STREAM_FORMAT" "$DISPLAY_MODEL" "$DEVICE" "$NO_INFERENCE" "$REMOTE_CONTROL_BIND_HOST" "$REMOTE_CONTROL_PORT"
 
 cd "$PI_DIR"
 exec uv run pi5-inference "${args[@]}" "$@"

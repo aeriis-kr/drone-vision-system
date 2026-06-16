@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from vision_rx.motion.types import Landmark
+
 
 @dataclass(frozen=True)
 class Detection:
@@ -27,9 +29,11 @@ class Detection:
         return (self.y1 + self.y2) * 0.5
 
 
+
 @dataclass(frozen=True)
 class InferenceResult:
     """Inference output for one frame before optional rendering."""
 
     frame: Any
     detections: tuple[Detection, ...]
+    poses: tuple[tuple[Landmark, ...], ...] = ()

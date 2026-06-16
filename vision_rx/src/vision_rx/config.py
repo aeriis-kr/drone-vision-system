@@ -26,6 +26,9 @@ class ReceiverConfig:
     metadata_enabled: bool = True
     metadata_port: int = 5001
     metadata_stale_s: float = 1.0
+    control_host: str = ""
+    control_port: int = 5002
+    control_timeout_s: float = 1.0
 
     @property
     def frame_bytes(self) -> int:
@@ -55,6 +58,14 @@ class ReceiverConfig:
             metadata_port=int(os.getenv("DVS_METADATA_PORT") or os.getenv("METADATA_PORT") or "5001"),
             metadata_stale_s=float(
                 os.getenv("DVS_METADATA_STALE_S") or os.getenv("METADATA_STALE_S") or "1.0"
+            ),
+            control_host=os.getenv("DVS_CONTROL_HOST")
+            or os.getenv("CONTROL_HOST")
+            or os.getenv("RX_CONTROL_HOST")
+            or "",
+            control_port=int(os.getenv("DVS_CONTROL_PORT") or os.getenv("CONTROL_PORT") or "5002"),
+            control_timeout_s=float(
+                os.getenv("DVS_CONTROL_TIMEOUT_S") or os.getenv("CONTROL_TIMEOUT_S") or "1.0"
             ),
         )
 

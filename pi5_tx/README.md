@@ -82,6 +82,22 @@ STREAM_HOST=<receiver-ip> make run-pose-inference-pi
 Both commands use one Pi camera owner, stream clean H264 video to the receiver, and decode the same stream to local BGR frames on the Pi for YOLO inference.
 Use `make run-pose-control-pi` for live Pixhawk UART gesture control. It defaults to `AUTO_DRY_RUN=1`, so stable UP/DOWN triggers produce metadata/control validation without mode changes or setpoints; actual GUIDED/setpoint commands are sent only when you explicitly run with `AUTO_DRY_RUN=0`. Use `make run-pose-control-sitl-pi` only with ArduCopter SITL already prepared in LOITER.
 
+## Stream-only Pi with receiver-side pose control
+
+Keep the Pi camera/encoder path but disable Pi YOLO with `NO_INFERENCE=1`. When this is combined with `make run-pose-control-pi`, the Pi starts a small TCP control server and waits for stable UP/DOWN triggers from the receiver:
+
+```bash
+NO_INFERENCE=1 STREAM_HOST=<receiver-ip> CONTROL_PORT=5002 make run-pose-control-pi
+```
+
+On the receiver, run pose inference locally and point control at the Pi:
+
+```bash
+CONTROL_HOST=<pi-ip> CONTROL_PORT=5002 make run-pose-control-rx
+```
+
+The TCP path is only for sparse control triggers and replies. Video stays on UDP/RTP.
+
 For command preview without running hardware:
 
 ```bash

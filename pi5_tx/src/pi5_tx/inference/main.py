@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+import os
 import time
 from typing import Any, Iterable
 
@@ -11,6 +12,7 @@ from pi5_tx.automation.config import AutomationConfig
 from pi5_tx.automation.events import TriggerEvent
 from pi5_tx.automation.gesture_control import AltitudeControlResult, GestureAltitudeController
 from pi5_tx.automation.mavlink import PixhawkConnection
+from pi5_tx.automation.remote_control import RemoteControlServerConfig, RemoteControlTCPServer
 from pi5_tx.config import StreamConfig
 from pi5_tx.inference.config import PiInferenceConfig
 from pi5_tx.inference.device import select_device
@@ -25,6 +27,13 @@ from pi5_tx.inference.metadata import (
 )
 from pi5_tx.inference.pipeline import FramePipelineError, PiInferencePipeline
 from pi5_tx.inference.yolo import InferenceError, YoloDetector
+from pi5_tx.streamer import RaspberryPiH264Streamer, StreamerError
+
+
+def _truthy(value: str | None) -> bool:
+    if value is None:
+        return False
+    return value.lower() in {"1", "true", "yes", "y", "on"}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -91,6 +100,29 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mavlink-device", default=automation_defaults.device)
     parser.add_argument("--mavlink-baud", type=int, default=automation_defaults.baud)
     parser.add_argument("--mavlink-connect-timeout-s", type=float, default=30.0)
+    parser.add_argument(
+        "--remote-control-server",
+        action="store_true",
+        default=_truthy(os.getenv("DVS_REMOTE_CONTROL") or os.getenv("REMOTE_CONTROL")),
+        help="listen for receiver-side stable gesture triggers over TCP",
+    )
+    parser.add_argument(
+        "--remote-control-bind-host",
+        default=os.getenv("DVS_REMOTE_CONTROL_BIND_HOST")
+        or os.getenv("REMOTE_CONTROL_BIND_HOST")
+        or os.getenv("CONTROL_BIND_HOST")
+        or "0.0.0.0",
+    )
+    parser.add_argument(
+        "--remote-control-port",
+        type=int,
+        default=int(
+            os.getenv("DVS_REMOTE_CONTROL_PORT")
+            or os.getenv("REMOTE_CONTROL_PORT")
+            or os.getenv("CONTROL_PORT")
+            or "5002"
+        ),
+    )
     parser.add_argument("--max-frames", type=int, default=inference_defaults.max_frames)
     return parser
 
@@ -186,7 +218,7 @@ def main() -> int:
         enabled=args.metadata_enabled and inference_config.enabled,
     )
     metadata_sender = MetadataUDPSender(metadata_config) if metadata_config.enabled else None
-    selected_device = select_device(args.device)
+    selected_device = select_device(args.device) if inference_config.enabled else "disabled"
 
     metadata_status = (
         f"metadata={metadata_config.host}:{metadata_config.port}"
@@ -204,15 +236,7 @@ def main() -> int:
         f"{metadata_status}"
     )
 
-    detector = YoloDetector(
-        model_name=inference_config.model,
-        confidence=inference_config.confidence,
-        imgsz=inference_config.imgsz,
-        device=selected_device,
-        enabled=inference_config.enabled,
-    )
-    pipeline = PiInferencePipeline(stream_config, inference_config)
-
+    remote_server = None
     try:
         gesture_controller = None
         if args.mavlink_control:
@@ -233,6 +257,31 @@ def main() -> int:
                 automation_config,
             )
 
+        if not inference_config.enabled:
+            if args.remote_control_server:
+                if gesture_controller is None:
+                    raise ValueError("--remote-control-server requires --mavlink-control")
+                remote_server = RemoteControlTCPServer(
+                    RemoteControlServerConfig(
+                        bind_host=args.remote_control_bind_host,
+                        port=args.remote_control_port,
+                    ),
+                    gesture_controller,
+                )
+                remote_server.start()
+            return RaspberryPiH264Streamer(stream_config).run()
+
+        if args.remote_control_server:
+            raise ValueError("--remote-control-server requires --no-inference")
+
+        detector = YoloDetector(
+            model_name=inference_config.model,
+            confidence=inference_config.confidence,
+            imgsz=inference_config.imgsz,
+            device=selected_device,
+            enabled=True,
+        )
+        pipeline = PiInferencePipeline(stream_config, inference_config)
         return run_loop(
             pipeline.frames(),
             detector,
@@ -243,13 +292,15 @@ def main() -> int:
             frame_width=stream_config.width,
             frame_height=stream_config.height,
         )
-    except (FramePipelineError, InferenceError, RuntimeError, ValueError) as exc:
+    except (FramePipelineError, InferenceError, StreamerError, RuntimeError, ValueError) as exc:
         print(f"[pi5-inference] error: {exc}")
         return 1
     except KeyboardInterrupt:
         print("\n[pi5-inference] stopping")
         return 130
     finally:
+        if remote_server is not None:
+            remote_server.close()
         if metadata_sender is not None:
             metadata_sender.close()
 

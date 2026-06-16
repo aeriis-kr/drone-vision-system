@@ -22,6 +22,9 @@ NO_OVERLAY="${NO_OVERLAY:-${DVS_NO_OVERLAY:-0}}"
 METADATA_PORT="${METADATA_PORT:-${DVS_METADATA_PORT:-5001}}"
 METADATA_STALE_S="${METADATA_STALE_S:-${DVS_METADATA_STALE_S:-1.0}}"
 NO_METADATA="${NO_METADATA:-${DVS_NO_METADATA:-0}}"
+CONTROL_HOST="${CONTROL_HOST:-${DVS_CONTROL_HOST:-${RX_CONTROL_HOST:-}}}"
+CONTROL_PORT="${CONTROL_PORT:-${DVS_CONTROL_PORT:-5002}}"
+CONTROL_TIMEOUT_S="${CONTROL_TIMEOUT_S:-${DVS_CONTROL_TIMEOUT_S:-1.0}}"
 
 is_truthy() {
 	case "$1" in
@@ -59,6 +62,9 @@ args=(
 	--imgsz "$IMGSZ"
 	--device "$DEVICE"
 	--display "$RX_DISPLAY"
+	--control-host "$CONTROL_HOST"
+	--control-port "$CONTROL_PORT"
+	--control-timeout-s "$CONTROL_TIMEOUT_S"
 )
 
 if is_truthy "$NO_INFERENCE"; then
@@ -129,13 +135,14 @@ EOF
 		[[ -n "${ip:-}" ]] || continue
 		printf '  STREAM_HOST=%s STREAM_PORT=%s WIDTH=%s HEIGHT=%s FPS=%s BITRATE=%s STREAM_FORMAT=%s make run-pi\n' \
 			"$ip" "$STREAM_PORT" "$WIDTH" "$HEIGHT" "$FPS" "$BITRATE" "$STREAM_FORMAT"
-		printf '  STREAM_HOST=%s STREAM_PORT=%s METADATA_PORT=%s WIDTH=%s HEIGHT=%s FPS=%s BITRATE=%s STREAM_FORMAT=%s MODEL=%s CONF=%s IMGSZ=%s DEVICE=%s make run-pose-inference-pi\n' \
-			"$ip" "$STREAM_PORT" "$METADATA_PORT" "$WIDTH" "$HEIGHT" "$FPS" "$BITRATE" "$STREAM_FORMAT" "$MODEL" "$CONF" "$IMGSZ" "$DEVICE"
-		printf '  STREAM_HOST=%s STREAM_PORT=%s METADATA_PORT=%s WIDTH=%s HEIGHT=%s FPS=%s BITRATE=%s STREAM_FORMAT=%s MODEL=%s CONF=%s IMGSZ=%s DEVICE=%s MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make run-pose-control-pi\n' \
-			"$ip" "$STREAM_PORT" "$METADATA_PORT" "$WIDTH" "$HEIGHT" "$FPS" "$BITRATE" "$STREAM_FORMAT" "$MODEL" "$CONF" "$IMGSZ" "$DEVICE"
+		printf '  NO_INFERENCE=1 STREAM_HOST=%s STREAM_PORT=%s CONTROL_BIND_HOST=0.0.0.0 CONTROL_PORT=%s WIDTH=%s HEIGHT=%s FPS=%s BITRATE=%s STREAM_FORMAT=%s MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make run-pose-control-pi\n' \
+			"$ip" "$STREAM_PORT" "$CONTROL_PORT" "$WIDTH" "$HEIGHT" "$FPS" "$BITRATE" "$STREAM_FORMAT"
 	done <<<"$rows"
 
 	cat <<EOF
+
+[run-rx] For laptop-side pose control, restart this receiver with the Pi IP:
+  CONTROL_HOST=<pi-ip> CONTROL_PORT=$CONTROL_PORT make run-pose-control-rx
 
 [run-rx] Hardware pose control defaults to AUTO_DRY_RUN=1; add AUTO_DRY_RUN=0 only after UART bench gates pass and the vehicle is safe.
 

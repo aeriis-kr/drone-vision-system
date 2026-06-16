@@ -7,6 +7,7 @@ import importlib
 from typing import Any
 
 from vision_rx.inference.detections import Detection, InferenceResult
+from vision_rx.inference.pose import landmarks_from_yolo_pose_result
 
 
 class InferenceError(RuntimeError):
@@ -36,13 +37,20 @@ class YoloDetector:
         )
         if not results:
             return InferenceResult(frame=frame, detections=())
+        first = results[0]
         return InferenceResult(
             frame=frame,
-            detections=self._detections_from_result(results[0]),
+            detections=self._detections_from_result(first),
+            poses=landmarks_from_yolo_pose_result(first),
         )
 
-    def render(self, frame: Any, detections: tuple[Detection, ...]) -> Any:
-        if not detections:
+    def render(
+        self,
+        frame: Any,
+        detections: tuple[Detection, ...],
+        poses: tuple[tuple[Any, ...], ...] = (),
+    ) -> Any:
+        if not detections and not poses:
             return frame
 
         try:
@@ -72,11 +80,34 @@ class YoloDetector:
                 2,
                 cv2.LINE_AA,
             )
+        self._draw_poses(cv2, frame, poses)
         return frame
 
     def process(self, frame: Any) -> Any:
         result = self.detect(frame)
-        return self.render(result.frame, result.detections)
+        return self.render(result.frame, result.detections, result.poses)
+
+    def _draw_poses(self, cv2: Any, frame: Any, poses: tuple[tuple[Any, ...], ...]) -> None:
+        if not poses:
+            return
+        frame_height, frame_width = frame.shape[:2]
+        edges = ((11, 13), (13, 15), (12, 14), (14, 16), (11, 12), (11, 23), (12, 24), (23, 24))
+        for pose in poses:
+            points: list[tuple[int, int] | None] = []
+            for landmark in pose:
+                if landmark.visibility < 0.2:
+                    points.append(None)
+                    continue
+                point = (int(landmark.x * frame_width), int(landmark.y * frame_height))
+                points.append(point)
+                cv2.circle(frame, point, 4, (255, 255, 0), -1)
+            for start, end in edges:
+                if start >= len(points) or end >= len(points):
+                    continue
+                start_point = points[start]
+                end_point = points[end]
+                if start_point is not None and end_point is not None:
+                    cv2.line(frame, start_point, end_point, (255, 255, 0), 2)
 
     def _detections_from_result(self, result: Any) -> tuple[Detection, ...]:
         boxes = getattr(result, "boxes", None)

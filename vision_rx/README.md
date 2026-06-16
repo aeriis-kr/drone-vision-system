@@ -57,7 +57,21 @@ NO_INFERENCE=1 make run-rx
 STREAM_HOST=<receiver-ip> METADATA_PORT=5001 make run-pose-inference-pi
 ```
 
-RX displays Pi-side detections, pose landmarks, raw/stable gesture, trigger state, and latest control result from metadata. RX-local YOLO is only a fallback/debug mode.
+RX displays Pi-side detections, pose landmarks, raw/stable gesture, trigger state, and latest control result from metadata.
+
+To keep inference on this receiver and send only stable pose-control triggers back to the Pi, run the Pi stream/control endpoint with inference disabled:
+
+```bash
+NO_INFERENCE=1 STREAM_HOST=<receiver-ip> CONTROL_PORT=5002 make run-pose-control-pi
+```
+
+Then run receiver-local pose inference with TCP control enabled:
+
+```bash
+CONTROL_HOST=<pi-ip> CONTROL_PORT=5002 make run-pose-control-rx
+```
+
+The receiver converts YOLO pose keypoints to the same UP/DOWN/STOP gesture decisions, debounces stable UP/DOWN for 3 seconds, and sends only the resulting control trigger to the Pi.
 
 Run YOLO while displaying the clean video stream without detection boxes:
 
@@ -65,10 +79,9 @@ Run YOLO while displaying the clean video stream without detection boxes:
 NO_OVERLAY=1 make run-rx
 ```
 
-Inference code still exposes structured fallback detections through
+Inference code exposes structured detections and pose landmarks through
 `vision_rx.inference.YoloDetector.detect()`. Pose landmark gesture helpers are
-available under `vision_rx.motion` for the future Pi-side
-`landmarks -> gesture -> TriggerEvent` path. Rendering can stay disabled.
+available under `vision_rx.motion`. Rendering can stay disabled.
 
 If the transmitter uses RTP instead of UDP MPEG-TS, set both sides to RTP:
 

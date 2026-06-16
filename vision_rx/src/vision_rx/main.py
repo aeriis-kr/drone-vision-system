@@ -7,8 +7,17 @@ import importlib
 import time
 from typing import Any
 
+from vision_rx.control_client import (
+    RemoteControlClient,
+    RemoteControlClientConfig,
+    RemoteControlError,
+    RemoteControlResult,
+    RemoteTrigger,
+)
+from vision_rx.control_overlay import render_control_overlay
 from vision_rx.metadata import MetadataReceiver
 from vision_rx.metadata_overlay import render_metadata_overlay
+from vision_rx.motion import Gesture, GestureConfig, GestureDebouncer, GestureDecision, Landmark, classify_vertical_gesture
 
 
 class NullDisplay:
@@ -17,6 +26,45 @@ class NullDisplay:
 
     def close(self) -> None:
         return None
+
+class GestureRuntime:
+    def __init__(self, config: GestureConfig) -> None:
+        self.config = config
+        self.debouncer = GestureDebouncer(config.debounce_s, config.debounce_missing_grace_s)
+        self.stable = Gesture.STOP
+        self.latest_decision = GestureDecision(Gesture.STOP, 0.0, "gesture disabled")
+
+
+def build_gesture_runtime(enabled: bool) -> GestureRuntime | None:
+    if not enabled:
+        return None
+    return GestureRuntime(GestureConfig())
+
+def select_gesture_decision(
+    poses: tuple[tuple[Landmark, ...], ...],
+    config: GestureConfig,
+) -> GestureDecision:
+    if not poses:
+        return GestureDecision(Gesture.STOP, 0.0, "no pose")
+
+    decisions = tuple(classify_vertical_gesture(pose, config) for pose in poses)
+    active = tuple(decision for decision in decisions if decision.gesture in (Gesture.UP, Gesture.DOWN))
+    if active:
+        gestures = {decision.gesture for decision in active}
+        if len(gestures) == 1:
+            return max(active, key=lambda decision: decision.confidence)
+        return GestureDecision(
+            Gesture.STOP,
+            min(decision.confidence for decision in active),
+            "conflicting person gestures",
+        )
+
+    stop_decisions = tuple(decision for decision in decisions if decision.gesture == Gesture.STOP)
+    if stop_decisions:
+        return max(stop_decisions, key=lambda decision: decision.confidence)
+
+    fallback = max(decisions, key=lambda decision: decision.confidence)
+    return GestureDecision(Gesture.STOP, fallback.confidence, fallback.reason)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -74,6 +122,9 @@ def build_parser() -> argparse.ArgumentParser:
         dest="metadata_enabled",
         default=defaults.metadata_enabled,
     )
+    parser.add_argument("--control-host", default=defaults.control_host, help="Pi host for TCP gesture control")
+    parser.add_argument("--control-port", type=int, default=defaults.control_port)
+    parser.add_argument("--control-timeout-s", type=float, default=defaults.control_timeout_s)
     return parser
 
 
@@ -107,14 +158,22 @@ def main() -> int:
         metadata_enabled=args.metadata_enabled,
         metadata_port=args.metadata_port,
         metadata_stale_s=args.metadata_stale_s,
+        control_host=args.control_host,
+        control_port=args.control_port,
+        control_timeout_s=args.control_timeout_s,
     )
 
     metadata_status = f"metadata=:{config.metadata_port}" if config.metadata_enabled else "metadata=disabled"
+    control_status = (
+        f"control=tcp://{config.control_host}:{config.control_port}"
+        if config.control_host
+        else "control=disabled"
+    )
     print(
         f"[vision-rx] platform={backend.name} stream={config.stream_format} "
         f"bind={config.bind_host}:{config.port} resolution={config.width}x{config.height} "
         f"device={selected_device} inference={config.inference} overlay={config.render_detections} "
-        f"display={config.display} {metadata_status}"
+        f"display={config.display} {metadata_status} {control_status}"
     )
 
     detector = yolo_module.YoloDetector(
@@ -126,6 +185,18 @@ def main() -> int:
     )
     display = build_display(config.display)
     metadata_receiver = MetadataReceiver(config.bind_host, config.metadata_port) if config.metadata_enabled else None
+    control_client = (
+        RemoteControlClient(
+            RemoteControlClientConfig(
+                host=config.control_host,
+                port=config.control_port,
+                timeout_s=config.control_timeout_s,
+            )
+        )
+        if config.control_host
+        else None
+    )
+    gesture_runtime = build_gesture_runtime(control_client is not None and config.inference)
 
     try:
         if metadata_receiver is not None:
@@ -140,6 +211,10 @@ def main() -> int:
                 metadata_receiver=metadata_receiver,
                 metadata_stale_s=config.metadata_stale_s,
                 metadata_port=config.metadata_port,
+                control_client=control_client,
+                gesture_runtime=gesture_runtime,
+                control_host=config.control_host,
+                control_port=config.control_port,
             )
     except (receiver_module.ReceiverError, yolo_module.InferenceError, RuntimeError) as exc:
         print(f"[vision-rx] error: {exc}")
@@ -177,11 +252,15 @@ def run_loop(
     metadata_receiver: Any | None = None,
     metadata_stale_s: float = 1.0,
     metadata_port: int = 5001,
+    control_client: RemoteControlClient | None = None,
+    gesture_runtime: GestureRuntime | None = None,
+    control_host: str = "",
+    control_port: int = 5002,
 ) -> int:
     last_report = time.monotonic()
     frame_count = 0
     fps = 0.0
-
+    latest_control: RemoteControlResult | None = None
     for frame in receiver.frames():
         frame_count += 1
         now = time.monotonic()
@@ -192,10 +271,60 @@ def run_loop(
             last_report = now
             print(f"[vision-rx] fps={fps:.1f}")
 
-        received = metadata_receiver.latest() if metadata_receiver is not None else None
+        received = (
+            None
+            if control_client is not None
+            else metadata_receiver.latest() if metadata_receiver is not None else None
+        )
         if received is None:
             result = detector.detect(frame)
-            output = detector.render(result.frame, result.detections) if render_detections else result.frame
+            if gesture_runtime is not None and control_client is not None:
+                decision = select_gesture_decision(result.poses, gesture_runtime.config)
+                previous_stable = gesture_runtime.stable
+                stable = gesture_runtime.debouncer.update(decision.gesture, now_s=now)
+                gesture_runtime.stable = stable
+                gesture_runtime.latest_decision = decision
+                if decision.gesture in (Gesture.UP, Gesture.DOWN) or stable != previous_stable:
+                    print(
+                        "[vision-rx] "
+                        f"gesture={decision.gesture} stable={stable} "
+                        f"confidence={decision.confidence:.2f} reason={decision.reason}"
+                    )
+                if stable != previous_stable and stable in (Gesture.UP, Gesture.DOWN):
+                    try:
+                        latest_control = control_client.send_trigger(
+                            RemoteTrigger(
+                                direction="UP" if stable is Gesture.UP else "DOWN",
+                                confidence=decision.confidence,
+                                source="vision-rx-pose",
+                                created_at_s=now,
+                                reason=decision.reason,
+                            )
+                        )
+                        print(
+                            "[vision-rx] "
+                            f"remote_control executed={latest_control.executed} "
+                            f"reason={latest_control.reason}"
+                        )
+                    except RemoteControlError as exc:
+                        latest_control = RemoteControlResult(False, str(exc))
+                        print(f"[vision-rx] remote_control error: {exc}")
+            output = (
+                detector.render(result.frame, result.detections, result.poses)
+                if render_detections
+                else result.frame
+            )
+            if render_detections and gesture_runtime is not None and control_client is not None:
+                output = render_control_overlay(
+                    output,
+                    raw_gesture=str(gesture_runtime.latest_decision.gesture),
+                    stable_gesture=str(gesture_runtime.stable),
+                    confidence=gesture_runtime.latest_decision.confidence,
+                    reason=gesture_runtime.latest_decision.reason,
+                    control=latest_control,
+                    control_host=control_host,
+                    control_port=control_port,
+                )
             if (
                 render_detections
                 and metadata_receiver is not None

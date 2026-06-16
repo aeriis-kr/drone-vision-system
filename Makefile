@@ -11,6 +11,10 @@ STREAM_PORT ?= 5000
 METADATA_HOST ?=
 METADATA_PORT ?= 5001
 METADATA_STALE_S ?= 1.0
+CONTROL_HOST ?=
+CONTROL_PORT ?= 5002
+CONTROL_TIMEOUT_S ?= 1.0
+CONTROL_BIND_HOST ?= 0.0.0.0
 WIDTH ?= 1280
 HEIGHT ?= 720
 FPS ?= 30
@@ -39,7 +43,7 @@ SITL_QGC_HOST ?= 127.0.0.1
 SITL_QGC_PORT ?= 14550
 MAVLINK_SITL_DEVICE ?= udpin:127.0.0.1:$(SITL_SMOKE_PORT)
 
-.PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pi run-inference-pi run-pose-inference-pi run-pose-control-pi run-pose-control-sitl-pi stream-to-rx dry-run-pi dry-run-inference-pi dry-run-pose-inference-pi pixhawk-bench-gate-test-pi takeover-test-pi build-sitl run-sitl sitl-smoke-test-pi sitl-gesture-control-test-pi check lock clean distclean doctor
+.PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pose-control-rx run-pi run-inference-pi run-pose-inference-pi run-pose-control-pi run-pose-control-sitl-pi stream-to-rx dry-run-pi dry-run-inference-pi dry-run-pose-inference-pi pixhawk-bench-gate-test-pi takeover-test-pi build-sitl run-sitl sitl-smoke-test-pi sitl-gesture-control-test-pi check lock clean distclean doctor
 
 help:
 	@printf '%s\n' 'Drone Vision System project targets'
@@ -54,6 +58,7 @@ help:
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-inference-pi       Stream video while running Pi-local YOLO object inference'
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-pose-inference-pi  Stream video while running Pi-local YOLO pose inference'
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-pose-control-pi  Hardware UART: pose gestures evaluate/control Pixhawk via MAVLink (AUTO_DRY_RUN=1 by default)'
+	@printf '%s\n' '  CONTROL_HOST=<pi-ip> make run-pose-control-rx  RX-local pose inference sends stable gestures to Pi TCP control'
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-pose-control-sitl-pi  SITL UDP: stable pose gestures command altitude via MAVLink'
 	@printf '%s\n' '  scripts/stream-to-rx.sh <receiver-ip>'
 	@printf '%s\n' '  make run-rx'
@@ -68,6 +73,7 @@ help:
 	@printf '%s\n' '  STREAM_PORT=5000 WIDTH=1280 HEIGHT=720 FPS=30 BITRATE=3000000'
 	@printf '%s\n' '  STREAM_FORMAT=mpegts|rtp MODEL=yolo11n.pt DEVICE=auto RX_DISPLAY=opencv|none NO_OVERLAY=1'
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> STREAM_PORT=5000 STREAM_FORMAT=mpegts|rtp'
+	@printf '%s\n' '  CONTROL_HOST=<pi-ip> CONTROL_PORT=5002 CONTROL_BIND_HOST=0.0.0.0'
 	@printf '%s\n' '  INFERENCE_MAX_FRAMES=10 limits Pi-local inference loop during tests'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Validation/maintenance:'
@@ -96,16 +102,16 @@ run-pi:
 	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" bash scripts/run-pi.sh
 
 run-inference-pi:
-	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_HOST="$(METADATA_HOST)" METADATA_PORT="$(METADATA_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" NO_METADATA="$(NO_METADATA)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" bash scripts/run-inference-pi.sh
+	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_HOST="$(METADATA_HOST)" METADATA_PORT="$(METADATA_PORT)" CONTROL_PORT="$(CONTROL_PORT)" CONTROL_BIND_HOST="$(CONTROL_BIND_HOST)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" NO_METADATA="$(NO_METADATA)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" bash scripts/run-inference-pi.sh
 
 run-pose-inference-pi:
-	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_HOST="$(METADATA_HOST)" METADATA_PORT="$(METADATA_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" NO_METADATA="$(NO_METADATA)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" bash scripts/run-inference-pi.sh --pose
+	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_HOST="$(METADATA_HOST)" METADATA_PORT="$(METADATA_PORT)" CONTROL_PORT="$(CONTROL_PORT)" CONTROL_BIND_HOST="$(CONTROL_BIND_HOST)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" NO_METADATA="$(NO_METADATA)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" bash scripts/run-inference-pi.sh --pose
 
 run-pose-control-pi:
-	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_HOST="$(METADATA_HOST)" METADATA_PORT="$(METADATA_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" NO_METADATA="$(NO_METADATA)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" AUTO_DRY_RUN="$(AUTO_DRY_RUN)" bash scripts/run-inference-pi.sh --pose --mavlink-control --mavlink-device "$(MAVLINK_DEVICE)" --mavlink-baud "$(MAVLINK_BAUD)"
+	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_HOST="$(METADATA_HOST)" METADATA_PORT="$(METADATA_PORT)" CONTROL_PORT="$(CONTROL_PORT)" CONTROL_BIND_HOST="$(CONTROL_BIND_HOST)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" NO_METADATA="$(NO_METADATA)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" AUTO_DRY_RUN="$(AUTO_DRY_RUN)" bash scripts/run-inference-pi.sh --pose --mavlink-control --mavlink-device "$(MAVLINK_DEVICE)" --mavlink-baud "$(MAVLINK_BAUD)"
 
 run-pose-control-sitl-pi:
-	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_HOST="$(METADATA_HOST)" METADATA_PORT="$(METADATA_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" NO_METADATA="$(NO_METADATA)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" AUTO_DRY_RUN="0" bash scripts/run-inference-pi.sh --pose --mavlink-control --mavlink-device "$(MAVLINK_SITL_DEVICE)" --mavlink-baud "$(MAVLINK_BAUD)"
+	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_HOST="$(METADATA_HOST)" METADATA_PORT="$(METADATA_PORT)" CONTROL_PORT="$(CONTROL_PORT)" CONTROL_BIND_HOST="$(CONTROL_BIND_HOST)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" NO_METADATA="$(NO_METADATA)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" AUTO_DRY_RUN="0" bash scripts/run-inference-pi.sh --pose --mavlink-control --mavlink-device "$(MAVLINK_SITL_DEVICE)" --mavlink-baud "$(MAVLINK_BAUD)"
 
 stream-to-rx: run-pi
 
@@ -142,7 +148,10 @@ sitl-gesture-control-test-pi:
 	MAVLINK_DEVICE="$(MAVLINK_SITL_DEVICE)" MAVLINK_BAUD="$(MAVLINK_BAUD)" bash scripts/sitl-gesture-control-test-pi.sh
 
 run-rx:
-	BIND_HOST="$(BIND_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_PORT="$(METADATA_PORT)" METADATA_STALE_S="$(METADATA_STALE_S)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" RX_DISPLAY="$(RX_DISPLAY)" NO_INFERENCE="$(NO_INFERENCE)" NO_FPS="$(NO_FPS)" NO_OVERLAY="$(NO_OVERLAY)" NO_METADATA="$(NO_METADATA)" bash scripts/run-rx.sh
+	BIND_HOST="$(BIND_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_PORT="$(METADATA_PORT)" METADATA_STALE_S="$(METADATA_STALE_S)" CONTROL_HOST="$(CONTROL_HOST)" CONTROL_PORT="$(CONTROL_PORT)" CONTROL_TIMEOUT_S="$(CONTROL_TIMEOUT_S)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" RX_DISPLAY="$(RX_DISPLAY)" NO_INFERENCE="$(NO_INFERENCE)" NO_FPS="$(NO_FPS)" NO_OVERLAY="$(NO_OVERLAY)" NO_METADATA="$(NO_METADATA)" bash scripts/run-rx.sh
+
+run-pose-control-rx:
+	BIND_HOST="$(BIND_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_PORT="$(METADATA_PORT)" METADATA_STALE_S="$(METADATA_STALE_S)" CONTROL_HOST="$(CONTROL_HOST)" CONTROL_PORT="$(CONTROL_PORT)" CONTROL_TIMEOUT_S="$(CONTROL_TIMEOUT_S)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="yolo11n-pose.pt" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" RX_DISPLAY="$(RX_DISPLAY)" NO_INFERENCE="$(NO_INFERENCE)" NO_FPS="$(NO_FPS)" NO_OVERLAY="$(NO_OVERLAY)" NO_METADATA="$(NO_METADATA)" bash scripts/run-rx.sh
 
 check:
 	python3 -m compileall -q pi5_tx/src vision_rx/src pi5_tx/main.py vision_rx/main.py
