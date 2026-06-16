@@ -111,11 +111,13 @@ EOF
 			"$ip" "$STREAM_PORT" "$WIDTH" "$HEIGHT" "$FPS" "$BITRATE" "$STREAM_FORMAT"
 		printf '  STREAM_HOST=%s STREAM_PORT=%s METADATA_PORT=%s make run-pose-inference-pi\n' \
 			"$ip" "$STREAM_PORT" "$METADATA_PORT"
-		printf '  STREAM_HOST=%s STREAM_PORT=%s METADATA_PORT=%s MAVLINK_SITL_DEVICE=udpin:0.0.0.0:14551 make run-pose-control-sitl-pi\n' \
+		printf '  STREAM_HOST=%s STREAM_PORT=%s METADATA_PORT=%s MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make run-pose-control-pi\n' \
 			"$ip" "$STREAM_PORT" "$METADATA_PORT"
 	done <<<"$rows"
 
 	cat <<EOF
+
+[run-rx] Hardware pose control defaults to AUTO_DRY_RUN=1; add AUTO_DRY_RUN=0 only after UART bench gates pass and the vehicle is safe.
 
 [run-rx] Keep this receiver process running, then start the Pi command in another terminal/SSH session.
 

@@ -1,4 +1,4 @@
-"""SITL-only gesture-triggered altitude controller."""
+"""MAVLink gesture-triggered altitude controller."""
 
 from __future__ import annotations
 
@@ -21,12 +21,12 @@ class AltitudeControlResult:
     vehicle_altitude_m: float | None = None
 
 @dataclass(slots=True)
-class SitlGestureAltitudeController:
+class GestureAltitudeController:
     """Executes one altitude step for each stable UP/DOWN gesture.
 
-    This class is intentionally SITL-scoped. It requires a live MAVLink
-    connection, evaluates the same handoff gate used by the dry-run FSM, enters
-    GUIDED only for the command burst, then returns the vehicle to LOITER.
+    This controller requires a live MAVLink connection, evaluates the same
+    handoff gate used by the dry-run FSM, enters GUIDED only for the command
+    burst, then returns the vehicle to LOITER.
     """
 
     connection: PixhawkConnection
@@ -65,6 +65,15 @@ class SitlGestureAltitudeController:
             )
 
         target_altitude_m = self.target_altitude(vehicle, event)
+        if self.config.dry_run:
+            return AltitudeControlResult(
+                False,
+                "automation dry run",
+                target_altitude_m,
+                vehicle.mode,
+                vehicle.armed,
+                vehicle.altitude_m,
+            )
         if not self.connection.set_mode(TAKEOVER_MODE, timeout_s=self.config.execute_timeout_s):
             return AltitudeControlResult(
                 False,
@@ -144,6 +153,6 @@ def _format_altitude(altitude_m: float | None) -> str:
 
 __all__ = [
     "AltitudeControlResult",
-    "SitlGestureAltitudeController",
+    "GestureAltitudeController",
     "ensure_sitl_handoff_ready",
 ]

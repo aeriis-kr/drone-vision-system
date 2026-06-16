@@ -9,7 +9,7 @@ from typing import Any, Iterable
 
 from pi5_tx.automation.config import AutomationConfig
 from pi5_tx.automation.events import TriggerEvent
-from pi5_tx.automation.gesture_control import AltitudeControlResult, SitlGestureAltitudeController
+from pi5_tx.automation.gesture_control import AltitudeControlResult, GestureAltitudeController
 from pi5_tx.automation.mavlink import PixhawkConnection
 from pi5_tx.config import StreamConfig
 from pi5_tx.inference.config import PiInferenceConfig
@@ -83,10 +83,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     automation_defaults = AutomationConfig.from_env()
     parser.add_argument(
-        "--sitl-control",
+        "--mavlink-control",
         action="store_true",
         default=False,
-        help="SITL-only: execute stable pose gestures as MAVLink altitude steps",
+        help="execute stable pose gestures as MAVLink altitude steps",
     )
     parser.add_argument("--mavlink-device", default=automation_defaults.device)
     parser.add_argument("--mavlink-baud", type=int, default=automation_defaults.baud)
@@ -215,20 +215,22 @@ def main() -> int:
 
     try:
         gesture_controller = None
-        if args.sitl_control:
+        if args.mavlink_control:
             if not args.pose:
-                raise ValueError("--sitl-control requires --pose")
+                raise ValueError("--mavlink-control requires --pose")
+            automation_config = AutomationConfig.from_env()
             print(
                 "[pi5-inference] "
-                f"sitl_control=enabled mavlink={args.mavlink_device}"
+                f"mavlink_control=enabled mavlink={args.mavlink_device} "
+                f"dry_run={automation_config.dry_run}"
             )
-            gesture_controller = SitlGestureAltitudeController(
+            gesture_controller = GestureAltitudeController(
                 PixhawkConnection.connect(
                     args.mavlink_device,
                     args.mavlink_baud,
                     timeout_s=args.mavlink_connect_timeout_s,
                 ),
-                AutomationConfig.from_env(),
+                automation_config,
             )
 
         return run_loop(
@@ -257,7 +259,7 @@ def run_loop(
     detector: YoloDetector,
     max_frames: int | None,
     gesture_runtime: GestureRuntime | None = None,
-    gesture_controller: SitlGestureAltitudeController | None = None,
+    gesture_controller: GestureAltitudeController | None = None,
     metadata_sender: MetadataUDPSender | None = None,
     frame_width: int | None = None,
     frame_height: int | None = None,

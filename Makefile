@@ -18,6 +18,7 @@ BITRATE ?= 3000000
 STREAM_FORMAT ?= mpegts
 MAVLINK_DEVICE ?= /dev/serial0
 MAVLINK_BAUD ?= 57600
+AUTO_DRY_RUN ?= 1
 MODEL ?= yolo11n.pt
 CONF ?= 0.25
 IMGSZ ?= 640
@@ -38,7 +39,7 @@ SITL_QGC_HOST ?= 127.0.0.1
 SITL_QGC_PORT ?= 14550
 MAVLINK_SITL_DEVICE ?= udpin:127.0.0.1:$(SITL_SMOKE_PORT)
 
-.PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pi run-inference-pi run-pose-inference-pi run-pose-control-sitl-pi stream-to-rx dry-run-pi dry-run-inference-pi dry-run-pose-inference-pi pixhawk-bench-gate-test-pi takeover-test-pi build-sitl run-sitl sitl-smoke-test-pi sitl-gesture-control-test-pi check lock clean distclean doctor
+.PHONY: help setup setup-rx setup-pi install install-rx install-pi run-rx run-pi run-inference-pi run-pose-inference-pi run-pose-control-pi run-pose-control-sitl-pi stream-to-rx dry-run-pi dry-run-inference-pi dry-run-pose-inference-pi pixhawk-bench-gate-test-pi takeover-test-pi build-sitl run-sitl sitl-smoke-test-pi sitl-gesture-control-test-pi check lock clean distclean doctor
 
 help:
 	@printf '%s\n' 'Drone Vision System project targets'
@@ -52,7 +53,8 @@ help:
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-pi'
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-inference-pi       Stream video while running Pi-local YOLO object inference'
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-pose-inference-pi  Stream video while running Pi-local YOLO pose inference'
-	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-pose-control-sitl-pi  SITL-only: stable pose gestures command altitude via MAVLink'
+	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-pose-control-pi  Hardware UART: pose gestures evaluate/control Pixhawk via MAVLink (AUTO_DRY_RUN=1 by default)'
+	@printf '%s\n' '  STREAM_HOST=<receiver-ip> make run-pose-control-sitl-pi  SITL UDP: stable pose gestures command altitude via MAVLink'
 	@printf '%s\n' '  scripts/stream-to-rx.sh <receiver-ip>'
 	@printf '%s\n' '  make run-rx'
 	@printf '%s\n' '  make pixhawk-bench-gate-test-pi  Read-only Pixhawk UART gate check for injected UP/DOWN triggers'
@@ -99,8 +101,11 @@ run-inference-pi:
 run-pose-inference-pi:
 	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_HOST="$(METADATA_HOST)" METADATA_PORT="$(METADATA_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" NO_METADATA="$(NO_METADATA)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" bash scripts/run-inference-pi.sh --pose
 
+run-pose-control-pi:
+	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_HOST="$(METADATA_HOST)" METADATA_PORT="$(METADATA_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" NO_METADATA="$(NO_METADATA)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" AUTO_DRY_RUN="$(AUTO_DRY_RUN)" bash scripts/run-inference-pi.sh --pose --mavlink-control --mavlink-device "$(MAVLINK_DEVICE)" --mavlink-baud "$(MAVLINK_BAUD)"
+
 run-pose-control-sitl-pi:
-	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_HOST="$(METADATA_HOST)" METADATA_PORT="$(METADATA_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" NO_METADATA="$(NO_METADATA)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" bash scripts/run-inference-pi.sh --pose --sitl-control --mavlink-device "$(MAVLINK_SITL_DEVICE)" --mavlink-baud "$(MAVLINK_BAUD)"
+	STREAM_HOST="$(STREAM_HOST)" STREAM_PORT="$(STREAM_PORT)" METADATA_HOST="$(METADATA_HOST)" METADATA_PORT="$(METADATA_PORT)" WIDTH="$(WIDTH)" HEIGHT="$(HEIGHT)" FPS="$(FPS)" BITRATE="$(BITRATE)" STREAM_FORMAT="$(STREAM_FORMAT)" MODEL="$(MODEL)" CONF="$(CONF)" IMGSZ="$(IMGSZ)" DEVICE="$(DEVICE)" NO_INFERENCE="$(NO_INFERENCE)" NO_METADATA="$(NO_METADATA)" INFERENCE_MAX_FRAMES="$(INFERENCE_MAX_FRAMES)" AUTO_DRY_RUN="0" bash scripts/run-inference-pi.sh --pose --mavlink-control --mavlink-device "$(MAVLINK_SITL_DEVICE)" --mavlink-baud "$(MAVLINK_BAUD)"
 
 stream-to-rx: run-pi
 

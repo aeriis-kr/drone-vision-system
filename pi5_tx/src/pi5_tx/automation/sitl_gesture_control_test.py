@@ -8,7 +8,7 @@ import time
 
 from .config import AutomationConfig
 from .events import TriggerEvent
-from .gesture_control import SitlGestureAltitudeController, ensure_sitl_handoff_ready
+from .gesture_control import GestureAltitudeController, ensure_sitl_handoff_ready
 from .mavlink import PixhawkConnection
 
 DEFAULT_SITL_DEVICE = "udpin:127.0.0.1:14551"
@@ -84,7 +84,7 @@ def main() -> int:
                 timeout_s=args.mode_timeout_s,
             )
 
-        controller = SitlGestureAltitudeController(connection, config)
+        controller = GestureAltitudeController(connection, config)
         for direction in args.sequence:
             now_s = time.monotonic()
             event = TriggerEvent(

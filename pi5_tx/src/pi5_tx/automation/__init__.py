@@ -2,12 +2,12 @@
 
 from .config import AutomationConfig
 from .events import AltitudeDirection, TriggerEvent
-from .gesture_control import AltitudeControlResult, SitlGestureAltitudeController
+from .gesture_control import AltitudeControlResult, GestureAltitudeController
 
 __all__ = [
     "AltitudeControlResult",
     "AltitudeDirection",
     "AutomationConfig",
-    "SitlGestureAltitudeController",
+    "GestureAltitudeController",
     "TriggerEvent",
 ]
