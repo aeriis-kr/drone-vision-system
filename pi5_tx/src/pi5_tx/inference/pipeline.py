@@ -34,6 +34,8 @@ class PiInferencePipeline:
         )
         cmd = [
             camera_bin,
+            "--hflip",
+            "--vflip",
             "--timeout",
             "0",
             "--codec",
