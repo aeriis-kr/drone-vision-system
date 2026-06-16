@@ -52,6 +52,16 @@ METADATA_HOST="${METADATA_HOST:-${DVS_METADATA_HOST:-$STREAM_HOST}}"
 METADATA_PORT="${METADATA_PORT:-${DVS_METADATA_PORT:-5001}}"
 NO_METADATA="${NO_METADATA:-${DVS_NO_METADATA:-0}}"
 
+is_truthy() {
+	case "$1" in
+		1|[Tt][Rr][Uu][Ee]|[Yy][Ee][Ss]|[Yy]|[Oo][Nn])
+			return 0
+			;;
+	esac
+	return 1
+}
+
+
 args=(
 	--host "$STREAM_HOST"
 	--port "$STREAM_PORT"
@@ -68,16 +78,12 @@ args=(
 	--device "$DEVICE"
 )
 
-case "${NO_INFERENCE,,}" in
-	1|true|yes|y|on)
-		args+=(--no-inference)
-		;;
-esac
-case "${NO_METADATA,,}" in
-	1|true|yes|y|on)
-		args+=(--no-metadata)
-		;;
-esac
+if is_truthy "$NO_INFERENCE"; then
+	args+=(--no-inference)
+fi
+if is_truthy "$NO_METADATA"; then
+	args+=(--no-metadata)
+fi
 
 
 if [[ -n "$INFERENCE_MAX_FRAMES" ]]; then

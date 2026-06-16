@@ -23,6 +23,16 @@ METADATA_PORT="${METADATA_PORT:-${DVS_METADATA_PORT:-5001}}"
 METADATA_STALE_S="${METADATA_STALE_S:-${DVS_METADATA_STALE_S:-1.0}}"
 NO_METADATA="${NO_METADATA:-${DVS_NO_METADATA:-0}}"
 
+is_truthy() {
+	case "$1" in
+		1|[Tt][Rr][Uu][Ee]|[Yy][Ee][Ss]|[Yy]|[Oo][Nn])
+			return 0
+			;;
+	esac
+	return 1
+}
+
+
 args=(
 	--bind-host "$BIND_HOST"
 	--port "$STREAM_PORT"
@@ -39,20 +49,18 @@ args=(
 	--display "$RX_DISPLAY"
 )
 
-if [[ "$NO_INFERENCE" == "1" || "$NO_INFERENCE" == "true" ]]; then
+if is_truthy "$NO_INFERENCE"; then
 	args+=(--no-inference)
 fi
-if [[ "$NO_FPS" == "1" || "$NO_FPS" == "true" ]]; then
+if is_truthy "$NO_FPS"; then
 	args+=(--no-fps)
 fi
-if [[ "$NO_OVERLAY" == "1" || "$NO_OVERLAY" == "true" ]]; then
+if is_truthy "$NO_OVERLAY"; then
 	args+=(--no-overlay)
 fi
-case "${NO_METADATA,,}" in
-	1|true|yes|y|on)
-		args+=(--no-metadata)
-		;;
-esac
+if is_truthy "$NO_METADATA"; then
+	args+=(--no-metadata)
+fi
 
 list_non_loopback_ipv4() {
 	if command -v ip >/dev/null 2>&1; then
