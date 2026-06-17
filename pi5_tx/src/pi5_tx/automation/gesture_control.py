@@ -53,6 +53,15 @@ class GestureAltitudeController:
                 vehicle.armed,
                 vehicle.altitude_m,
             )
+        if gate.reason == "already LAND":
+            return AltitudeControlResult(
+                True,
+                gate.reason,
+                LAND_MODE,
+                LAND_MODE,
+                vehicle.armed,
+                vehicle.altitude_m,
+            )
         if self.config.dry_run:
             return AltitudeControlResult(
                 False,

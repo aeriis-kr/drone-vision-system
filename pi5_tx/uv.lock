@@ -1081,19 +1081,24 @@ name = "pi5-tx"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "numpy" },
     { name = "pymavlink" },
     { name = "pyserial" },
+]
+
+[package.optional-dependencies]
+inference = [
+    { name = "numpy" },
     { name = "ultralytics" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "numpy", specifier = ">=1.26" },
+    { name = "numpy", marker = "extra == 'inference'", specifier = ">=1.26" },
     { name = "pymavlink", specifier = ">=2.4" },
     { name = "pyserial", specifier = ">=3.5" },
-    { name = "ultralytics", specifier = ">=8.3" },
+    { name = "ultralytics", marker = "extra == 'inference'", specifier = ">=8.3" },
 ]
+provides-extras = ["inference"]
 
 [[package]]
 name = "pillow"

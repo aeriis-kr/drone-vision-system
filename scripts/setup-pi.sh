@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PI_DIR="$ROOT/pi5_tx"
 PYTHON_BIN="${PYTHON_BIN:-/usr/bin/python3}"
 APT_UPGRADE="${APT_UPGRADE:-1}"
+INSTALL_PI_INFERENCE="${INSTALL_PI_INFERENCE:-0}"
 
 need_sudo() {
 	if [[ "${EUID}" -eq 0 ]]; then
@@ -91,11 +92,24 @@ install_apt_packages() {
 		"$camera_pkg"
 }
 
+truthy() {
+	case "${1,,}" in
+	1 | true | yes | y | on) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
 sync_python_package() {
 	echo "[setup-pi] creating uv venv with system site packages"
 	cd "$PI_DIR"
 	uv venv --system-site-packages --python "$PYTHON_BIN"
-	uv sync
+	if truthy "$INSTALL_PI_INFERENCE"; then
+		echo "[setup-pi] installing pi5_tx[inference] optional dependencies"
+		uv sync --extra inference
+	else
+		echo "[setup-pi] installing control-only Pi dependencies (set INSTALL_PI_INFERENCE=1 for Pi-local YOLO)"
+		uv sync
+	fi
 }
 
 

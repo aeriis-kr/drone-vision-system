@@ -67,7 +67,7 @@ def evaluate_land_gate(
     if not state.automation_enabled:
         return GateResult(False, "automation disabled")
     if state.mode == LAND_MODE:
-        return GateResult(False, "already LAND")
+        return GateResult(True, "already LAND")
     if (
         state.last_auto_action_s is not None
         and now_s - state.last_auto_action_s < config.cooldown_s

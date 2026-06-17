@@ -105,9 +105,28 @@ class PixhawkConnection:
             return MavlinkTarget(msg.get_srcSystem(), msg.get_srcComponent())
         raise RuntimeError("No ArduPilot heartbeat found")
 
+    def drain_pending_messages(self, max_messages: int = 200) -> int:
+        drained = 0
+        while drained < max_messages:
+            msg = self.master.recv_match(blocking=False)
+            if msg is None:
+                break
+            drained += 1
+        if drained:
+            print(f"[mavlink] drained stale messages count={drained}")
+        return drained
+
+    @staticmethod
+    def _is_target_message(msg: Any, target: MavlinkTarget) -> bool:
+        return (
+            msg.get_srcSystem() == target.system
+            and msg.get_srcComponent() == target.component
+        )
+
     def get_mode(self, timeout_s: float = 3.0) -> str | None:
         target = self._require_target()
         mavutil = _mavutil()
+        self.drain_pending_messages()
         deadline = time.monotonic() + timeout_s
         current_mode: str | None = None
         while time.monotonic() < deadline:
@@ -120,7 +139,7 @@ class PixhawkConnection:
             if msg_type == "STATUSTEXT":
                 print(f"[STATUSTEXT] {msg.severity}: {msg.text}")
                 continue
-            if msg_type == "HEARTBEAT" and msg.get_srcSystem() == target.system:
+            if msg_type == "HEARTBEAT" and self._is_target_message(msg, target):
                 current_mode = mavutil.mode_string_v10(msg)
         return current_mode
 
@@ -130,6 +149,7 @@ class PixhawkConnection:
 
         mavutil = _mavutil()
         target = self._require_target()
+        self.drain_pending_messages()
         print(f"[set_mode] {mode_name}")
         self.master.mav.set_mode_send(
             target.system,
@@ -150,7 +170,7 @@ class PixhawkConnection:
             if msg_type == "STATUSTEXT":
                 print(f"[STATUSTEXT] {msg.severity}: {msg.text}")
                 continue
-            if msg_type == "HEARTBEAT" and msg.get_srcSystem() == target.system:
+            if msg_type == "HEARTBEAT" and self._is_target_message(msg, target):
                 mode = mavutil.mode_string_v10(msg)
                 print(f"  mode: {mode}")
                 if mode == mode_name:
@@ -327,6 +347,7 @@ class PixhawkConnection:
     ) -> VehicleState:
         mavutil = _mavutil()
         target = self._require_target()
+        self.drain_pending_messages()
         mode: str | None = None
         armed = False
         altitude_m: float | None = None
@@ -362,7 +383,7 @@ class PixhawkConnection:
             if msg_type == "STATUSTEXT":
                 print(f"[STATUSTEXT] {msg.severity}: {msg.text}")
                 continue
-            if msg.get_srcSystem() != target.system:
+            if not self._is_target_message(msg, target):
                 continue
             if msg_type == "HEARTBEAT":
                 seen_mode = True

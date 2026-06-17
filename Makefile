@@ -4,6 +4,7 @@ SHELL := /usr/bin/env bash
 PYTHON_BIN ?= python3
 APT_UPGRADE ?= 1
 INSTALL_SYSTEM_DEPS ?= 1
+INSTALL_PI_INFERENCE ?= 0
 
 STREAM_HOST ?=
 BIND_HOST ?= 0.0.0.0
@@ -51,7 +52,7 @@ help:
 	@printf '%s\n' ''
 	@printf '%s\n' 'Setup:'
 	@printf '%s\n' '  make setup-rx        Install receiver system deps + uv deps on this machine'
-	@printf '%s\n' '  make setup-pi        Raspberry Pi 5 system deps + uv deps'
+	@printf '%s\n' '  make setup-pi        Raspberry Pi 5 system deps + uv deps; add INSTALL_PI_INFERENCE=1 for Pi-local YOLO'
 	@printf '%s\n' '  make install         uv sync both packages without apt/brew installs'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Run:'
@@ -76,6 +77,7 @@ help:
 	@printf '%s\n' '  STREAM_HOST=<receiver-ip> STREAM_PORT=5000 STREAM_FORMAT=mpegts|rtp'
 	@printf '%s\n' '  CONTROL_HOST=<pi-ip> CONTROL_PORT=5002 CONTROL_BIND_HOST=0.0.0.0 CONTROL_TIMEOUT_S=1.0 CONTROL_RESPONSE_TIMEOUT_S=20.0'
 	@printf '%s\n' '  INFERENCE_MAX_FRAMES=10 limits Pi-local inference loop during tests'
+	@printf '%s\n' '  INSTALL_PI_INFERENCE=1 installs pi5_tx[inference] for Pi-local YOLO; default is control-only'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Validation/maintenance:'
 	@printf '%s\n' '  make check           Compile Python sources and validate TOML'
@@ -89,12 +91,12 @@ setup-rx:
 	PYTHON_BIN="$(PYTHON_BIN)" INSTALL_SYSTEM_DEPS="$(INSTALL_SYSTEM_DEPS)" bash scripts/setup-rx.sh
 
 setup-pi:
-	PYTHON_BIN="$(PYTHON_BIN)" APT_UPGRADE="$(APT_UPGRADE)" bash scripts/setup-pi.sh
+	PYTHON_BIN="$(PYTHON_BIN)" APT_UPGRADE="$(APT_UPGRADE)" INSTALL_PI_INFERENCE="$(INSTALL_PI_INFERENCE)" bash scripts/setup-pi.sh
 
 install: install-pi install-rx
 
 install-pi:
-	cd pi5_tx && uv venv --system-site-packages --python "$(PYTHON_BIN)" && uv sync
+	cd pi5_tx && uv venv --system-site-packages --python "$(PYTHON_BIN)" && if [[ "$(INSTALL_PI_INFERENCE)" == "1" ]]; then uv sync --extra inference; else uv sync; fi
 
 install-rx:
 	cd vision_rx && uv venv --system-site-packages --python "$(PYTHON_BIN)" && uv sync

@@ -21,8 +21,14 @@ make setup-pi
 The setup target:
 
 - updates/upgrades apt packages,
-- installs camera, FFmpeg, Python and uv dependencies,
+- installs camera, FFmpeg, Python, uv, and control-only Python dependencies,
 - creates `uv venv --system-site-packages`.
+
+Pi-local YOLO dependencies are optional and are not installed by default. Install them only when this Pi should run local object/pose inference:
+
+```bash
+INSTALL_PI_INFERENCE=1 make setup-pi
+```
 
 It does not configure Wi-Fi AP mode, SSIDs/passwords, or static IP addresses.
 The Pi image is expected to contain the classroom AP/network connection before
@@ -64,6 +70,12 @@ NO_INFERENCE=1 make run-rx
 ```
 
 RX overlays are drawn from Pi metadata on UDP 5001, so leave NO_OVERLAY unset unless you want clean video only.
+
+Pi-local inference requires the optional `pi5_tx[inference]` dependencies:
+
+```bash
+INSTALL_PI_INFERENCE=1 make install-pi
+```
 
 Then run the Pi-local object inference stream from the Pi:
 
