@@ -78,13 +78,13 @@ STREAM_HOST=<receiver-ip> make run-pose-inference-pi
 ```
 
 `make run-inference-pi` uses `yolo11n.pt` for object detections.
-`make run-pose-inference-pi` uses `yolo11n-pose.pt`, converts pose keypoints into UP/DOWN/STOP gesture decisions, debounces UP/DOWN for 3 seconds, and logs `[pi5-inference] gesture=...` plus `[pi5-inference] trigger ...` when a stable UP/DOWN trigger is emitted.
+`make run-pose-inference-pi` uses `yolo11n-pose.pt`, converts pose keypoints into UP/DOWN/STOP gesture decisions, debounces UP/DOWN for 3 seconds, and logs `[pi5-inference] gesture=...`. Only stable DOWN emits a control trigger; UP is intentionally disabled.
 Both commands use one Pi camera owner, stream clean H264 video to the receiver, and decode the same stream to local BGR frames on the Pi for YOLO inference.
-Use `make run-pose-control-pi` for live Pixhawk UART gesture control. It defaults to `AUTO_DRY_RUN=1`, so stable UP/DOWN triggers produce metadata/control validation without mode changes or setpoints; actual GUIDED/setpoint commands are sent only when you explicitly run with `AUTO_DRY_RUN=0`. Use `make run-pose-control-sitl-pi` only with ArduCopter SITL already prepared in LOITER.
+Use `make run-pose-control-pi` for live Pixhawk UART gesture control. It defaults to `AUTO_DRY_RUN=1`, so stable DOWN triggers produce metadata/control validation without mode changes; actual RTL mode changes are sent only when you explicitly run with `AUTO_DRY_RUN=0`. Use `make run-pose-control-sitl-pi` only with ArduCopter SITL already prepared in LOITER.
 
 ## Stream-only Pi with receiver-side pose control
 
-Keep the Pi camera/encoder path but disable Pi YOLO with `NO_INFERENCE=1`. When this is combined with `make run-pose-control-pi`, the Pi starts a small TCP control server and waits for stable UP/DOWN triggers from the receiver:
+Keep the Pi camera/encoder path but disable Pi YOLO with `NO_INFERENCE=1`. When this is combined with `make run-pose-control-pi`, the Pi starts a small TCP control server and waits for stable DOWN triggers from the receiver:
 
 ```bash
 NO_INFERENCE=1 STREAM_HOST=<receiver-ip> CONTROL_PORT=5002 make run-pose-control-pi
@@ -128,13 +128,13 @@ make sitl-smoke-test-pi
 
 The SITL test listens on `udpin:127.0.0.1:14551`, then runs LOITER -> GUIDED -> LOITER with an optional STABILIZE return. It validates the pymavlink mode-change path before using UART hardware; it still sends no altitude or movement setpoints. To force Docker or bridge networking, override `CONTAINER_ENGINE=docker` or `SITL_NETWORK=bridge SITL_QGC_HOST=<host-address> SITL_SMOKE_HOST=<host-address>`.
 
-For the first altitude-control check, keep `make run-sitl` running and execute:
+For the first RTL gesture-control check, keep `make run-sitl` running and execute:
 
 ```bash
 make sitl-gesture-control-test-pi
 ```
 
-That SITL-only test arms/takes off in GUIDED, leaves the simulated vehicle in LOITER, injects stable UP then DOWN triggers, sends one relative-altitude target per trigger, returns to LOITER after each command burst, then lands unless `--skip-land` is passed through `scripts/sitl-gesture-control-test-pi.sh`.
+That SITL-only test arms/takes off in GUIDED, leaves the simulated vehicle in LOITER, injects a stable DOWN trigger, switches to RTL, then lands unless `--skip-land` is passed through `scripts/sitl-gesture-control-test-pi.sh`. UP is intentionally disabled.
 
 To drive the same controller from live Pi pose gestures against SITL, leave SITL armed in LOITER first, for example by running the gesture-control test through the script with `--skip-land`, then start:
 
@@ -150,15 +150,15 @@ This path uses the SITL UDP listener on `127.0.0.1:14551`; Pixhawk UART hardware
 MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make pixhawk-bench-gate-test-pi
 ```
 
-This connects to Pixhawk over UART, reads the current vehicle state, injects stable UP and DOWN trigger events in software, evaluates the same automation gate used by SITL control, and prints whether each direction would be allowed plus the target altitude. It does not arm, change modes, take off, land, or send position/altitude setpoints. Exit code is 0 only when every requested direction passes the gate; a blocked gate prints the reason and exits 1.
+This connects to Pixhawk over UART, reads the current vehicle state, injects the requested stable gesture event in software, evaluates the same DOWN-to-RTL gate used by live control, and prints whether RTL would be requested. It does not arm, take off, land, or send movement setpoints. Exit code is 0 only when every requested direction passes the gate; a blocked gate prints the reason and exits 1.
 
-On MAVLink connect, the Pi requests `GLOBAL_POSITION_INT` at 5 Hz so `relative_alt` can populate the altitude gate. If the bench gate still prints `altitude=unknown`, check the Pixhawk UART `SERIALx_*` mapping and GPS/EKF health; the controller still refuses movement without a current altitude.
+On MAVLink connect, the Pi requests `GLOBAL_POSITION_INT` at 5 Hz so the log can still show `relative_alt`, but DOWN-to-RTL no longer requires altitude. If the bench gate prints stale-looking mode/armed values, check the Pixhawk UART `SERIALx_*` mapping and compare against QGC on the same MAVLink stream.
 
 Useful pass-through examples:
 
 ```bash
+scripts/pixhawk-bench-gate-test-pi.sh --direction DOWN
 scripts/pixhawk-bench-gate-test-pi.sh --direction UP
-scripts/pixhawk-bench-gate-test-pi.sh --direction DOWN --last-auto-action-age-s 1
 scripts/pixhawk-bench-gate-test-pi.sh --automation-disabled
 ```
 
@@ -174,7 +174,7 @@ or in a safe bench/SITL setup.
 
 ## Pixhawk UART live pose control
 
-1. Run `MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make pixhawk-bench-gate-test-pi` and require `[pixhawk-bench-gate] ... allowed=true` for the intended direction.
+1. Run `MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make pixhawk-bench-gate-test-pi` and require `[pixhawk-bench-gate] direction=DOWN allowed=true ... target_mode=RTL`.
 2. Run `NO_INFERENCE=1 make run-rx` on RX.
-3. Run `STREAM_HOST=<receiver-ip> MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make run-pose-control-pi` on Pi for dry-run metadata/control validation. Expected RX HUD: `control executed=False reason=automation dry run target=<altitude>`, with no Pixhawk mode change.
-4. Only with props removed or a safe restrained bench and the vehicle already satisfying the gates, run `AUTO_DRY_RUN=0 STREAM_HOST=<receiver-ip> MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make run-pose-control-pi`. Expected Pi log: `[gesture-control] executed direction=... target_altitude_m=...`; expected RX HUD: `control executed=True reason=ok`.
+3. Run `STREAM_HOST=<receiver-ip> MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make run-pose-control-pi` on Pi for dry-run metadata/control validation. Expected RX HUD: `control executed=False reason=RTL dry run`, with no Pixhawk mode change.
+4. Only with props removed or a safe restrained bench and the vehicle in LOITER, run `AUTO_DRY_RUN=0 STREAM_HOST=<receiver-ip> MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make run-pose-control-pi`. Expected Pi log: `[gesture-control] executed direction=DOWN target_mode=RTL`; expected RX HUD: `control executed=True reason=RTL mode set`.

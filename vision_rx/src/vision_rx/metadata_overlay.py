@@ -110,13 +110,8 @@ def _draw_hud(cv2: Any, frame: Any, metadata: PoseMetadataFrame, age_s: float) -
     if metadata.trigger is not None:
         lines.append(f"trigger direction={metadata.trigger.direction} source={metadata.trigger.source}")
     if metadata.control is not None:
-        target = (
-            "n/a"
-            if metadata.control.target_altitude_m is None
-            else f"{metadata.control.target_altitude_m:.2f}m"
-        )
         lines.append(
-            f"control executed={metadata.control.executed} reason={metadata.control.reason} target={target}"
+            f"control executed={metadata.control.executed} reason={metadata.control.reason}"
         )
         altitude = (
             "unknown"

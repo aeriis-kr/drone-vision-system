@@ -14,6 +14,7 @@ COPTER_MODES = {
     "ALT_HOLD": 2,
     "GUIDED": 4,
     "LOITER": 5,
+    "RTL": 6,
     "LAND": 9,
     "POSHOLD": 16,
     "BRAKE": 17,

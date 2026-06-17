@@ -9,7 +9,7 @@ from typing import cast
 
 from .config import AutomationConfig
 from .events import AltitudeDirection, TriggerEvent
-from .gates import evaluate_takeover_gate
+from .gates import RTL_MODE, evaluate_rtl_gate
 from .mavlink import PixhawkConnection
 from .state import VehicleState
 
@@ -19,7 +19,7 @@ class BenchGateDecision:
     direction: AltitudeDirection
     allowed: bool
     reason: str
-    target_altitude_m: float | None
+    target_mode: str | None
 
 
 EVENT_SOURCE = "pixhawk-uart-bench-gate-test"
@@ -39,17 +39,9 @@ def evaluate_bench_direction(
         created_at_s=now_s,
         reason=EVENT_REASON,
     )
-    gate = evaluate_takeover_gate(state, event, config, now_s)
-    target_altitude_m = None
-    if gate.allowed and state.altitude_m is not None:
-        if direction == "UP":
-            target_altitude_m = state.altitude_m + config.altitude_step_m
-        else:
-            target_altitude_m = max(
-                config.min_target_altitude_m,
-                state.altitude_m - config.altitude_step_m,
-            )
-    return BenchGateDecision(direction, gate.allowed, gate.reason, target_altitude_m)
+    gate = evaluate_rtl_gate(state, event, config, now_s)
+    target_mode = RTL_MODE if gate.allowed else None
+    return BenchGateDecision(direction, gate.allowed, gate.reason, target_mode)
 
 
 def directions_from_arg(value: str) -> tuple[AltitudeDirection, ...]:
@@ -61,7 +53,7 @@ def directions_from_arg(value: str) -> tuple[AltitudeDirection, ...]:
 def main() -> int:
     env_config = AutomationConfig.from_env()
     parser = argparse.ArgumentParser(
-        description="Read-only Pixhawk UART automation gate bench test"
+        description="Read-only Pixhawk UART DOWN-to-RTL gate bench test"
     )
     parser.add_argument("--device", default=env_config.device)
     parser.add_argument("--baud", type=int, default=env_config.baud)
@@ -70,7 +62,7 @@ def main() -> int:
     parser.add_argument(
         "--direction",
         choices=("UP", "DOWN", "BOTH"),
-        default="BOTH",
+        default="DOWN",
     )
     parser.add_argument("--automation-disabled", action="store_true", default=False)
     parser.add_argument("--last-auto-action-age-s", type=float, default=None)
@@ -123,17 +115,13 @@ def main() -> int:
             for direction in directions_from_arg(args.direction)
         )
         for decision in decisions:
-            target_altitude = (
-                "n/a"
-                if decision.target_altitude_m is None
-                else f"{decision.target_altitude_m:.2f}"
-            )
+            target_mode = "n/a" if decision.target_mode is None else decision.target_mode
             print(
                 "[pixhawk-bench-gate] "
                 f"direction={decision.direction} "
                 f"allowed={str(decision.allowed).lower()} "
                 f"reason={decision.reason} "
-                f"target_altitude_m={target_altitude}"
+                f"target_mode={target_mode}"
             )
         return 0 if all(decision.allowed for decision in decisions) else 1
     except KeyboardInterrupt:

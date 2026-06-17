@@ -9,6 +9,7 @@ from .state import GateResult, VehicleState
 HANDOFF_MODE = "LOITER"
 TAKEOVER_MODE = "GUIDED"
 RETURN_MODE = "LOITER"
+RTL_MODE = "RTL"
 PILOT_EMERGENCY_OVERRIDE_MODES = frozenset({"RTL", "LAND", "BRAKE", "STABILIZE"})
 
 
@@ -47,6 +48,28 @@ def evaluate_takeover_gate(
         return GateResult(False, "battery unhealthy")
     if not state.pilot_stick_idle:
         return GateResult(False, "pilot input active")
+    if (
+        state.last_auto_action_s is not None
+        and now_s - state.last_auto_action_s < config.cooldown_s
+    ):
+        return GateResult(False, "cooldown active")
+    return GateResult(True, "ok")
+
+
+def evaluate_rtl_gate(
+    state: VehicleState,
+    event: TriggerEvent,
+    config: AutomationConfig,
+    now_s: float,
+) -> GateResult:
+    if event.direction == "UP":
+        return GateResult(False, "UP gesture disabled")
+    if not state.automation_enabled:
+        return GateResult(False, "automation disabled")
+    if state.mode == RTL_MODE:
+        return GateResult(False, "already RTL")
+    if state.mode != HANDOFF_MODE:
+        return GateResult(False, "mode is not LOITER")
     if (
         state.last_auto_action_s is not None
         and now_s - state.last_auto_action_s < config.cooldown_s

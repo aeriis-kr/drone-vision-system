@@ -1,4 +1,4 @@
-"""MAVLink gesture-triggered altitude controller."""
+"""MAVLink gesture-triggered RTL controller."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from .config import AutomationConfig
 from .events import TriggerEvent
-from .gates import HANDOFF_MODE, RETURN_MODE, TAKEOVER_MODE, evaluate_takeover_gate
+from .gates import HANDOFF_MODE, RTL_MODE, TAKEOVER_MODE, evaluate_rtl_gate
 from .mavlink import PixhawkConnection
 from .state import VehicleState
 
@@ -22,11 +22,10 @@ class AltitudeControlResult:
 
 @dataclass(slots=True)
 class GestureAltitudeController:
-    """Executes one altitude step for each stable UP/DOWN gesture.
+    """Executes RTL mode change for each stable DOWN gesture.
 
-    This controller requires a live MAVLink connection, evaluates the same
-    handoff gate used by the dry-run FSM, enters GUIDED only for the command
-    burst, then returns the vehicle to LOITER.
+    UP is intentionally disabled. STOP never emits a trigger. DOWN requests RTL
+    from LOITER and leaves any later intervention to the RC pilot.
     """
 
     connection: PixhawkConnection
@@ -36,7 +35,7 @@ class GestureAltitudeController:
 
     def handle_event(self, event: TriggerEvent, now_s: float) -> AltitudeControlResult:
         vehicle = self.snapshot_vehicle()
-        gate = evaluate_takeover_gate(vehicle, event, self.config, now_s)
+        gate = evaluate_rtl_gate(vehicle, event, self.config, now_s)
         print(
             "[gesture-control] "
             f"direction={event.direction} "
@@ -54,51 +53,31 @@ class GestureAltitudeController:
                 vehicle.armed,
                 vehicle.altitude_m,
             )
-        if vehicle.altitude_m is None:
-            return AltitudeControlResult(
-                False,
-                "altitude unavailable",
-                None,
-                vehicle.mode,
-                vehicle.armed,
-                vehicle.altitude_m,
-            )
-
-        target_altitude_m = self.target_altitude(vehicle, event)
         if self.config.dry_run:
             return AltitudeControlResult(
                 False,
-                "automation dry run",
-                target_altitude_m,
+                "RTL dry run",
+                None,
                 vehicle.mode,
                 vehicle.armed,
                 vehicle.altitude_m,
             )
-        if not self.connection.set_mode(TAKEOVER_MODE, timeout_s=self.config.execute_timeout_s):
+        if not self.connection.set_mode(RTL_MODE, timeout_s=self.config.execute_timeout_s):
             return AltitudeControlResult(
                 False,
-                "GUIDED takeover failed",
+                "RTL mode change failed",
                 None,
                 vehicle.mode,
                 vehicle.armed,
                 vehicle.altitude_m,
             )
 
-        self.connection.send_relative_altitude_target(
-            target_altitude_m,
-            duration_s=self.config.execute_timeout_s,
-            rate_hz=self.config.setpoint_rate_hz,
-        )
-        self.connection.set_mode(RETURN_MODE, timeout_s=self.config.execute_timeout_s)
         self.last_auto_action_s = now_s
-        print(
-            "[gesture-control] executed "
-            f"direction={event.direction} target_altitude_m={target_altitude_m:.2f}"
-        )
+        print(f"[gesture-control] executed direction={event.direction} target_mode={RTL_MODE}")
         return AltitudeControlResult(
             True,
-            "ok",
-            target_altitude_m,
+            "RTL mode set",
+            None,
             vehicle.mode,
             vehicle.armed,
             vehicle.altitude_m,
@@ -111,15 +90,6 @@ class GestureAltitudeController:
             pilot_stick_deadband_pwm=self.config.pilot_stick_deadband_pwm,
         )
 
-    def target_altitude(self, vehicle: VehicleState, event: TriggerEvent) -> float:
-        if vehicle.altitude_m is None:
-            raise RuntimeError("altitude unavailable")
-        if event.direction == "UP":
-            return vehicle.altitude_m + self.config.altitude_step_m
-        return max(
-            self.config.min_target_altitude_m,
-            vehicle.altitude_m - self.config.altitude_step_m,
-        )
 
 
 def ensure_sitl_handoff_ready(

@@ -10,7 +10,7 @@ AltitudeDirection = Literal["UP", "DOWN"]
 
 @dataclass(frozen=True, slots=True)
 class TriggerEvent:
-    """A candidate altitude-change trigger emitted by future perception wiring."""
+    """A candidate automation trigger emitted by perception wiring."""
 
     direction: AltitudeDirection
     confidence: float
