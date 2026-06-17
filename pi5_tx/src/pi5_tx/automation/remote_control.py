@@ -130,8 +130,8 @@ def _trigger_event_from_payload(payload: dict[str, Any]) -> TriggerEvent:
         raise ValueError("unsupported command type")
 
     direction = str(payload.get("direction"))
-    if direction not in ("UP", "DOWN"):
-        raise ValueError("direction must be UP or DOWN")
+    if direction != "UP":
+        raise ValueError("direction must be UP")
 
     confidence = float(payload.get("confidence", 0.0))
     if not 0.0 <= confidence <= 1.0:
@@ -150,7 +150,7 @@ def _control_payload(result: AltitudeControlResult) -> dict[str, object]:
     return {
         "executed": result.executed,
         "reason": result.reason,
-        "target_altitude_m": result.target_altitude_m,
+        "target_mode": result.target_mode,
         "vehicle_mode": result.vehicle_mode,
         "vehicle_armed": result.vehicle_armed,
         "vehicle_altitude_m": result.vehicle_altitude_m,

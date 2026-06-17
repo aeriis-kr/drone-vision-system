@@ -95,7 +95,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--mavlink-control",
         action="store_true",
         default=False,
-        help="execute stable DOWN pose gestures as MAVLink RTL mode changes",
+        help="execute stable UP pose gestures as MAVLink LAND mode changes",
     )
     parser.add_argument("--mavlink-device", default=automation_defaults.device)
     parser.add_argument("--mavlink-baud", type=int, default=automation_defaults.baud)
@@ -175,10 +175,10 @@ def trigger_event_from_gesture(
     stable: Gesture,
     now_s: float,
 ) -> TriggerEvent | None:
-    if stable is not Gesture.DOWN:
+    if stable is not Gesture.UP:
         return None
     return TriggerEvent(
-        direction="DOWN",
+        direction="UP",
         confidence=decision.confidence,
         source="pi5-inference-pose",
         created_at_s=now_s,
@@ -373,6 +373,9 @@ def run_loop(
                             f"control executed={control_result.executed} "
                             f"reason={control_result.reason}"
                         )
+                else:
+                    latest_trigger = None
+                    latest_control = None
         else:
             decision = GestureDecision(Gesture.STOP, 0.0, "gesture disabled")
             stable = Gesture.STOP

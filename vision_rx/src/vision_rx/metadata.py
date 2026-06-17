@@ -51,7 +51,7 @@ class MetadataTrigger:
 class MetadataControl:
     executed: bool
     reason: str
-    target_altitude_m: float | None
+    target_mode: str | None
     vehicle_mode: str | None
     vehicle_armed: bool | None
     vehicle_altitude_m: float | None
@@ -241,7 +241,7 @@ def _parse_control(value: object) -> MetadataControl | None:
     return MetadataControl(
         executed=bool(value["executed"]),
         reason=str(value["reason"]),
-        target_altitude_m=_optional_float(value["target_altitude_m"]),
+        target_mode=_optional_str(value["target_mode"]),
         vehicle_mode=_optional_str(value["vehicle_mode"]),
         vehicle_armed=_optional_bool(value["vehicle_armed"]),
         vehicle_altitude_m=_optional_float(value["vehicle_altitude_m"]),
@@ -251,6 +251,8 @@ def _parse_control(value: object) -> MetadataControl | None:
 def _optional_float(value: object) -> float | None:
     if value is None:
         return None
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
+        raise TypeError("float field must be numeric")
     return float(value)
 
 

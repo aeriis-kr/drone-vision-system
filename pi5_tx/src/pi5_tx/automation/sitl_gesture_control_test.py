@@ -1,4 +1,4 @@
-"""SITL end-to-end stable DOWN gesture to MAVLink RTL test."""
+"""SITL end-to-end stable UP gesture to MAVLink LAND test."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ DEFAULT_SITL_DEVICE = "udpin:127.0.0.1:14551"
 def main() -> int:
     env_config = AutomationConfig.from_env()
     parser = argparse.ArgumentParser(
-        description="SITL-only stable DOWN gesture to RTL mode-change test"
+        description="SITL-only stable UP gesture to LAND mode-change test"
     )
     parser.add_argument("--device", default=DEFAULT_SITL_DEVICE)
     parser.add_argument("--baud", type=int, default=env_config.baud)
@@ -30,8 +30,8 @@ def main() -> int:
         "--sequence",
         nargs="+",
         choices=("UP", "DOWN"),
-        default=("DOWN",),
-        help="stable gesture sequence to inject after SITL reaches LOITER; UP is disabled",
+        default=("UP",),
+        help="stable gesture sequence to inject after SITL reaches LOITER; DOWN is disabled",
     )
     parser.add_argument(
         "--no-prepare-flight",

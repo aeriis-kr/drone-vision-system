@@ -40,7 +40,7 @@ class GestureConfig:
     max_elbow_shoulder_delta_y_torso_ratio: float = 0.45
     allow_partial_torso_reference: bool = False
     fallback_torso_height_shoulder_ratio: float = 1.5
-    debounce_s: float = 3.0
+    debounce_s: float = 1.0
     debounce_missing_grace_s: float = 1.0
 
     @classmethod
@@ -51,7 +51,7 @@ class GestureConfig:
             debounce_s=float(
                 os.getenv("DVS_GESTURE_DEBOUNCE_S")
                 or os.getenv("GESTURE_DEBOUNCE_S")
-                or "3.0"
+                or "1.0"
             ),
             debounce_missing_grace_s=float(
                 os.getenv("DVS_GESTURE_MISSING_GRACE_S")

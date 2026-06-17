@@ -28,7 +28,7 @@ class RemoteControlClientConfig:
 class RemoteControlResult:
     executed: bool
     reason: str
-    target_altitude_m: float | None = None
+    target_mode: str | None = None
     vehicle_mode: str | None = None
     vehicle_armed: bool | None = None
     vehicle_altitude_m: float | None = None
@@ -140,7 +140,7 @@ def _parse_response(data: bytes) -> RemoteControlResult:
         return RemoteControlResult(
             executed=bool(control["executed"]),
             reason=str(control["reason"]),
-            target_altitude_m=_optional_float(control.get("target_altitude_m")),
+            target_mode=_optional_str(control.get("target_mode")),
             vehicle_mode=_optional_str(control.get("vehicle_mode")),
             vehicle_armed=_optional_bool(control.get("vehicle_armed")),
             vehicle_altitude_m=_optional_float(control.get("vehicle_altitude_m")),
@@ -152,6 +152,8 @@ def _parse_response(data: bytes) -> RemoteControlResult:
 def _optional_float(value: object) -> float | None:
     if value is None:
         return None
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
+        raise TypeError("float field must be numeric")
     return float(value)
 
 

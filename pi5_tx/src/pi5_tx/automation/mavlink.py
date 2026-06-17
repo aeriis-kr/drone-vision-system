@@ -385,7 +385,7 @@ class PixhawkConnection:
             elif msg_type == "RC_CHANNELS":
                 seen_rc = True
                 pilot_stick_idle = _rc_sticks_idle(msg, pilot_stick_deadband_pwm)
-            if not require_health_messages and seen_mode and seen_altitude:
+            if not require_health_messages and seen_mode:
                 break
             if (
                 require_health_messages

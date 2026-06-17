@@ -300,11 +300,11 @@ def run_loop(
                         f"gesture={decision.gesture} stable={stable} "
                         f"confidence={decision.confidence:.2f} reason={decision.reason}"
                     )
-                if stable != previous_stable and stable in (Gesture.UP, Gesture.DOWN):
+                if stable != previous_stable and stable is Gesture.UP:
                     try:
                         latest_control = control_client.send_trigger(
                             RemoteTrigger(
-                                direction="UP" if stable is Gesture.UP else "DOWN",
+                                direction="UP",
                                 confidence=decision.confidence,
                                 source="vision-rx-pose",
                                 created_at_s=now,
@@ -319,6 +319,8 @@ def run_loop(
                     except RemoteControlError as exc:
                         latest_control = RemoteControlResult(False, str(exc))
                         print(f"[vision-rx] remote_control error: {exc}")
+                elif stable != previous_stable:
+                    latest_control = None
             output = (
                 detector.render(result.frame, result.detections, result.poses)
                 if render_detections

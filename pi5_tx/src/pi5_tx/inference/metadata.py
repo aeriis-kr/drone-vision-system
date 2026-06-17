@@ -44,7 +44,7 @@ class MetadataTriggerState:
 class MetadataControlState:
     executed: bool
     reason: str
-    target_altitude_m: float | None
+    target_mode: str | None
     vehicle_mode: str | None
     vehicle_armed: bool | None
     vehicle_altitude_m: float | None
@@ -70,7 +70,7 @@ def control_state_from_result(result: AltitudeControlResult | None) -> MetadataC
     return MetadataControlState(
         executed=result.executed,
         reason=result.reason,
-        target_altitude_m=result.target_altitude_m,
+        target_mode=result.target_mode,
         vehicle_mode=result.vehicle_mode,
         vehicle_armed=result.vehicle_armed,
         vehicle_altitude_m=result.vehicle_altitude_m,
@@ -173,7 +173,7 @@ def _control_payload(control: MetadataControlState | None) -> dict[str, object] 
     return {
         "executed": control.executed,
         "reason": control.reason,
-        "target_altitude_m": control.target_altitude_m,
+        "target_mode": control.target_mode,
         "vehicle_mode": control.vehicle_mode,
         "vehicle_armed": control.vehicle_armed,
         "vehicle_altitude_m": control.vehicle_altitude_m,

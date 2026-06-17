@@ -9,7 +9,7 @@ from typing import cast
 
 from .config import AutomationConfig
 from .events import AltitudeDirection, TriggerEvent
-from .gates import RTL_MODE, evaluate_rtl_gate
+from .gates import LAND_MODE, evaluate_land_gate
 from .mavlink import PixhawkConnection
 from .state import VehicleState
 
@@ -39,8 +39,8 @@ def evaluate_bench_direction(
         created_at_s=now_s,
         reason=EVENT_REASON,
     )
-    gate = evaluate_rtl_gate(state, event, config, now_s)
-    target_mode = RTL_MODE if gate.allowed else None
+    gate = evaluate_land_gate(state, event, config, now_s)
+    target_mode = LAND_MODE if gate.allowed else None
     return BenchGateDecision(direction, gate.allowed, gate.reason, target_mode)
 
 
@@ -53,7 +53,7 @@ def directions_from_arg(value: str) -> tuple[AltitudeDirection, ...]:
 def main() -> int:
     env_config = AutomationConfig.from_env()
     parser = argparse.ArgumentParser(
-        description="Read-only Pixhawk UART DOWN-to-RTL gate bench test"
+        description="Read-only Pixhawk UART UP-to-LAND gate bench test"
     )
     parser.add_argument("--device", default=env_config.device)
     parser.add_argument("--baud", type=int, default=env_config.baud)
@@ -62,7 +62,7 @@ def main() -> int:
     parser.add_argument(
         "--direction",
         choices=("UP", "DOWN", "BOTH"),
-        default="DOWN",
+        default="UP",
     )
     parser.add_argument("--automation-disabled", action="store_true", default=False)
     parser.add_argument("--last-auto-action-age-s", type=float, default=None)

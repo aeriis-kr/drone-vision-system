@@ -32,9 +32,10 @@ def render_control_overlay(
         f"control tcp={control_host}:{control_port}",
     ]
     if control is None:
-        lines.append("control waiting for stable DOWN trigger")
+        lines.append("control waiting for stable UP trigger")
     else:
-        lines.append(f"control executed={control.executed} reason={control.reason}")
+        target = "n/a" if control.target_mode is None else control.target_mode
+        lines.append(f"control executed={control.executed} reason={control.reason} target={target}")
         altitude = "unknown" if control.vehicle_altitude_m is None else f"{control.vehicle_altitude_m:.2f}m"
         lines.append(
             f"vehicle mode={control.vehicle_mode} armed={control.vehicle_armed} altitude={altitude}"

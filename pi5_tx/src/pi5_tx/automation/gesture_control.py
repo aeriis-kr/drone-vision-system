@@ -1,4 +1,4 @@
-"""MAVLink gesture-triggered RTL controller."""
+"""MAVLink gesture-triggered LAND controller."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from .config import AutomationConfig
 from .events import TriggerEvent
-from .gates import HANDOFF_MODE, RTL_MODE, TAKEOVER_MODE, evaluate_rtl_gate
+from .gates import HANDOFF_MODE, LAND_MODE, TAKEOVER_MODE, evaluate_land_gate
 from .mavlink import PixhawkConnection
 from .state import VehicleState
 
@@ -15,17 +15,17 @@ from .state import VehicleState
 class AltitudeControlResult:
     executed: bool
     reason: str
-    target_altitude_m: float | None = None
+    target_mode: str | None = None
     vehicle_mode: str | None = None
     vehicle_armed: bool | None = None
     vehicle_altitude_m: float | None = None
 
 @dataclass(slots=True)
 class GestureAltitudeController:
-    """Executes RTL mode change for each stable DOWN gesture.
+    """Executes LAND mode change for each stable UP gesture.
 
-    UP is intentionally disabled. STOP never emits a trigger. DOWN requests RTL
-    from LOITER and leaves any later intervention to the RC pilot.
+    DOWN is intentionally disabled. STOP never emits a trigger. UP requests LAND
+    and leaves any later intervention to the RC pilot.
     """
 
     connection: PixhawkConnection
@@ -35,7 +35,7 @@ class GestureAltitudeController:
 
     def handle_event(self, event: TriggerEvent, now_s: float) -> AltitudeControlResult:
         vehicle = self.snapshot_vehicle()
-        gate = evaluate_rtl_gate(vehicle, event, self.config, now_s)
+        gate = evaluate_land_gate(vehicle, event, self.config, now_s)
         print(
             "[gesture-control] "
             f"direction={event.direction} "
@@ -56,29 +56,29 @@ class GestureAltitudeController:
         if self.config.dry_run:
             return AltitudeControlResult(
                 False,
-                "RTL dry run",
-                None,
+                "LAND dry run",
+                LAND_MODE,
                 vehicle.mode,
                 vehicle.armed,
                 vehicle.altitude_m,
             )
-        if not self.connection.set_mode(RTL_MODE, timeout_s=self.config.execute_timeout_s):
+        if not self.connection.set_mode(LAND_MODE, timeout_s=self.config.execute_timeout_s):
             return AltitudeControlResult(
                 False,
-                "RTL mode change failed",
-                None,
+                "LAND mode change failed",
+                LAND_MODE,
                 vehicle.mode,
                 vehicle.armed,
                 vehicle.altitude_m,
             )
 
         self.last_auto_action_s = now_s
-        print(f"[gesture-control] executed direction={event.direction} target_mode={RTL_MODE}")
+        print(f"[gesture-control] executed direction={event.direction} target_mode={LAND_MODE}")
         return AltitudeControlResult(
             True,
-            "RTL mode set",
-            None,
-            vehicle.mode,
+            "LAND mode set",
+            LAND_MODE,
+            LAND_MODE,
             vehicle.armed,
             vehicle.altitude_m,
         )

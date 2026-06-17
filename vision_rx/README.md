@@ -71,7 +71,7 @@ Then run receiver-local pose inference with TCP control enabled:
 CONTROL_HOST=<pi-ip> CONTROL_PORT=5002 CONTROL_RESPONSE_TIMEOUT_S=20 make run-pose-control-rx
 ```
 
-The receiver converts YOLO pose keypoints to the same UP/DOWN/STOP gesture decisions, debounces stable UP/DOWN for 3 seconds, and sends only the resulting control trigger to the Pi.
+The receiver converts YOLO pose keypoints to the same UP/DOWN/STOP gesture decisions, debounces stable UP/DOWN for 1 second, and sends only the resulting UP control trigger to the Pi.
 
 `CONTROL_TIMEOUT_S` covers TCP connect/send. `CONTROL_RESPONSE_TIMEOUT_S` covers the Pi-side MAVLink gate/control result; keep it longer than the MAVLink action window so safety-gate denials return as `executed=False` instead of a receiver timeout.
 
