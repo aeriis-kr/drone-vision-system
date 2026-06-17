@@ -152,6 +152,8 @@ MAVLINK_DEVICE=/dev/serial0 MAVLINK_BAUD=57600 make pixhawk-bench-gate-test-pi
 
 This connects to Pixhawk over UART, reads the current vehicle state, injects stable UP and DOWN trigger events in software, evaluates the same automation gate used by SITL control, and prints whether each direction would be allowed plus the target altitude. It does not arm, change modes, take off, land, or send position/altitude setpoints. Exit code is 0 only when every requested direction passes the gate; a blocked gate prints the reason and exits 1.
 
+On MAVLink connect, the Pi requests `GLOBAL_POSITION_INT` at 5 Hz so `relative_alt` can populate the altitude gate. If the bench gate still prints `altitude=unknown`, check the Pixhawk UART `SERIALx_*` mapping and GPS/EKF health; the controller still refuses movement without a current altitude.
+
 Useful pass-through examples:
 
 ```bash

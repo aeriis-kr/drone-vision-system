@@ -30,6 +30,9 @@ _POSITION_ONLY_TYPE_MASK = (
     | (1 << 11)
 )
 
+GLOBAL_POSITION_INT_MESSAGE_ID = 33
+DEFAULT_GLOBAL_POSITION_INT_RATE_HZ = 5.0
+
 
 @dataclass(frozen=True, slots=True)
 class MavlinkTarget:
@@ -81,6 +84,10 @@ class PixhawkConnection:
             ) from exc
         connection = cls(master)
         connection.target = connection.wait_target(timeout_s=timeout_s)
+        connection.request_global_position_stream(
+            rate_hz=DEFAULT_GLOBAL_POSITION_INT_RATE_HZ,
+            timeout_s=2.0,
+        )
         return connection
 
     def wait_target(self, timeout_s: float = 15.0) -> MavlinkTarget:
@@ -228,6 +235,59 @@ class PixhawkConnection:
         return self.wait_command_ack(
             mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, timeout_s=timeout_s
         ).accepted
+
+    def request_global_position_stream(
+        self,
+        *,
+        rate_hz: float = DEFAULT_GLOBAL_POSITION_INT_RATE_HZ,
+        timeout_s: float = 2.0,
+    ) -> bool:
+        return self.request_message_interval(
+            GLOBAL_POSITION_INT_MESSAGE_ID,
+            rate_hz=rate_hz,
+            timeout_s=timeout_s,
+        )
+
+    def request_message_interval(
+        self,
+        message_id: int,
+        *,
+        rate_hz: float,
+        timeout_s: float = 2.0,
+    ) -> bool:
+        if rate_hz <= 0.0:
+            raise ValueError("message interval rate must be positive")
+
+        mavutil = _mavutil()
+        target = self._require_target()
+        interval_us = int(1_000_000 / rate_hz)
+        print(
+            "[message_interval] "
+            f"message_id={message_id} rate_hz={rate_hz:.1f} interval_us={interval_us}"
+        )
+        self.master.mav.command_long_send(
+            target.system,
+            target.component,
+            mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
+            0,
+            message_id,
+            interval_us,
+            0,
+            0,
+            0,
+            0,
+            0,
+        )
+        ack = self.wait_command_ack(
+            mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
+            timeout_s=timeout_s,
+        )
+        if not ack.accepted:
+            print(
+                "[message_interval] warning: "
+                f"message_id={message_id} request not acknowledged"
+            )
+        return ack.accepted
 
     def wait_command_ack(
         self, command: int, timeout_s: float = 5.0
