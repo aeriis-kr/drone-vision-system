@@ -1,3 +1,15 @@
+### UV 설치
+```powershell
+# winget을 통한 uv 설치
+winget install -e --id=astral-sh.uv
+```
+
+### VS Code 설치
+```powershell
+# winget을 통한 VSCode 설치
+winget install -e --id Microsoft.VisualStudioCode
+```
+
 ### 간단한 코딩 YOLO 모델을 통한 object detection
 ```python
 import cv2
