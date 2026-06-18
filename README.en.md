@@ -5,8 +5,6 @@ Educational drone vision platform split into two independent Python packages:
 - `pi5_tx/`: Raspberry Pi 5 camera capture, H264 hardware encode, UDP/RTP transmit.
 - `vision_rx/`: FFmpeg receive/decode, YOLO inference, OpenCV visualization.
 
-See `architecture.md` for the design notes.
-
 ## Classroom quick start
 
 ### 1. Prepare Raspberry Pi 5
