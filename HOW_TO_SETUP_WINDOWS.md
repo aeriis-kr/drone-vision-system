@@ -20,23 +20,14 @@ winget install -e --id Gyan.FFmpeg
 winget install -e --id Git.Git
 ```
 
-### 윈도우 방화벽 인바운드 UDP 5000 허용 (관리자 권한 실행 필요)
+### 프로젝트 클론
 ```powershell
-# 설정
-New-NetFirewallRule `
-  -DisplayName "Allow UDP 5000 Inbound" `
-  -Direction Inbound `
-  -Protocol UDP `
-  -LocalPort 5000 `
-  -Action Allow
-
-# 확인
-Get-NetFirewallRule -DisplayName "Allow UDP 5000 Inbound"
+git clone https://github.com/aeriis-kr/drone-vision-system
 ```
 
 ## 모델 다운로드 명령어
 ```powershell
-cd vision_rx
+cd drone-vision-system/vision_rx
 uv sync
 uv run python -c "from ultralytics import YOLO; YOLO('yolo11n.pt')"
 uv run python -c "from ultralytics import YOLO; YOLO('yolo11n-pose.pt')"
