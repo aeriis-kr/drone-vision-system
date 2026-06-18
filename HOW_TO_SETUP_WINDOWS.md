@@ -2,11 +2,6 @@
 
 ## 설치&설정 명령어
 
-### UV 설치
-```powershell
-# winget을 통한 uv 설치
-winget install -e --id=astral-sh.uv
-```
 ### PuTTY 설치
 ```powershell
 # winget을 통한 Putty 설치
@@ -23,12 +18,6 @@ winget install -e --id Gyan.FFmpeg
 ```powershell
 # winget을 통한 Git 설치
 winget install -e --id Git.Git
-```
-
-### VS Code 설치
-```powershell
-# winget을 통한 VSCode 설치
-winget install -e --id Microsoft.VisualStudioCode
 ```
 
 ### 윈도우 방화벽 인바운드 UDP 5000 허용 (관리자 권한 실행 필요)
